@@ -47,10 +47,7 @@ fn transform_to_iso(transform: &Transform, physics_scale: f32) -> Isometry<f32> 
 pub fn apply_collider_user_changes(
     _config: Res<RapierConfiguration>,
     mut context: ResMut<RapierContext>,
-    changed_collider_transforms: Query<
-        (&RapierColliderHandle, &GlobalTransform),
-        Changed<GlobalTransform>,
-    >,
+    changed_collider_transforms: Query<(&RapierColliderHandle, &Transform), Changed<Transform>>,
     changed_shapes: Query<(&RapierColliderHandle, &Collider), Changed<Collider>>,
     changed_disabled: Query<(&RapierColliderHandle, &ColliderDisabled), Changed<ColliderDisabled>>,
 ) {
@@ -59,7 +56,7 @@ pub fn apply_collider_user_changes(
     for (handle, transform) in changed_collider_transforms.iter() {
         if let Some(co) = context.colliders.get_mut(handle.0) {
             if co.parent().is_none() {
-                co.set_position(transform_to_iso(&transform.compute_transform(), scale));
+                co.set_position(transform_to_iso(transform, scale));
             }
         }
     }
@@ -90,13 +87,12 @@ pub type ColliderComponents<'a> = (
 pub fn init_colliders(
     mut commands: Commands,
     mut context: ResMut<RapierContext>,
-    colliders: Query<(ColliderComponents, &GlobalTransform), Without<RapierColliderHandle>>,
+    colliders: Query<(ColliderComponents, &Transform), Without<RapierColliderHandle>>,
 ) {
     let context = &mut *context;
     let physics_scale = context.physics_scale();
 
-    for ((entity, shape, sensor, collision_groups, disabled), global_transform) in colliders.iter()
-    {
+    for ((entity, shape, sensor, collision_groups, disabled), transform) in colliders.iter() {
         // let mut scaled_shape = shape.clone();
         // scaled_shape.set_scale(shape.scale / physics_scale, config.scaled_shape_subdivision);
         let mut builder = ColliderBuilder::new(shape.raw.clone())
@@ -108,7 +104,7 @@ pub fn init_colliders(
             builder = builder.collision_groups((*collision_groups).into());
         }
 
-        let isometry = transform_to_iso(&global_transform.compute_transform(), physics_scale);
+        let isometry = transform_to_iso(transform, physics_scale);
 
         builder = builder.position(isometry);
         let handle = context.colliders.insert(builder);
@@ -174,24 +170,24 @@ fn update_query_pipeline(mut context: ResMut<RapierContext>) {
     context.update_query_pipeline();
 }
 
-pub fn ray_cast_target(
-    rapier_ctx: &RapierContext,
-    origin: Vec2,
-    target: Vec2,
-    buffer_dist: f32,
-) -> Vec2 {
-    let filter = QueryFilter {
-        groups: Some(CollisionGroups::new(Group::ALL, GROUP_WALL)),
-        ..default()
-    };
-    let ray_origin = origin;
-    let Some(ray_dir) = (target - origin).try_normalize() else {
-        return target;
-    };
-    let max_toi = (target - origin).length() + buffer_dist;
-    if let Some((_, dist)) = rapier_ctx.cast_ray(ray_origin, ray_dir, max_toi, true, filter) {
-        ray_origin + ray_dir * (dist - buffer_dist)
-    } else {
-        target
-    }
-}
+// pub fn ray_cast_target(
+//     rapier_ctx: &RapierContext,
+//     origin: Vec2,
+//     target: Vec2,
+//     buffer_dist: f32,
+// ) -> Vec2 {
+//     let filter = QueryFilter {
+//         groups: Some(CollisionGroups::new(Group::ALL, GROUP_WALL)),
+//         ..default()
+//     };
+//     let ray_origin = origin;
+//     let Some(ray_dir) = (target - origin).try_normalize() else {
+//         return target;
+//     };
+//     let max_toi = (target - origin).length() + buffer_dist;
+//     if let Some((_, dist)) = rapier_ctx.cast_ray(ray_origin, ray_dir, max_toi, true, filter) {
+//         ray_origin + ray_dir * (dist - buffer_dist)
+//     } else {
+//         target
+//     }
+// }

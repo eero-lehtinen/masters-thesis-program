@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy_framepace::FramepaceSettings;
+use visualization::VisualizationPlugin;
 
 use crate::simulation::SimulationPlugin;
 
@@ -20,6 +21,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             SimulationPlugin,
+            VisualizationPlugin,
             bevy_framepace::FramepacePlugin,
         ))
         .insert_resource(FramepaceSettings {
