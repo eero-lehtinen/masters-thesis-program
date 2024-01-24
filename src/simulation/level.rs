@@ -4,14 +4,14 @@ use rand::Rng;
 
 use crate::utils::Vertices;
 
-use super::{rng::FastRng, SimulationSet};
+use super::{rng::FastRng, SimulationSet, SimulationStartupSet};
 
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Level::get())
-            .add_systems(Startup, spawn_level)
+            .add_systems(Startup, spawn_level.in_set(SimulationStartupSet::Spawn))
             .add_systems(PreUpdate, spawn_enemies.in_set(SimulationSet::Spawn));
     }
 }
@@ -43,6 +43,9 @@ struct Target;
 
 #[derive(Component, Debug)]
 pub struct Enemy;
+
+#[derive(Component, Debug)]
+pub struct Wall(pub Vertices);
 
 fn square(size: f32) -> Vertices {
     rectangle(Vec2::splat(size))
@@ -91,8 +94,10 @@ fn spawn_level(level: Res<Level>, mut commands: Commands) {
 
     for wall in &level.walls {
         let center = wall.iter().sum::<Vec2>() / wall.len() as f32;
+        let local_vertices = wall.clone().with_offset(-center);
         commands.spawn((
-            polyline_collider(wall.clone().with_offset(-center)),
+            Wall(local_vertices.clone()),
+            polyline_collider(local_vertices),
             spatial(center),
         ));
     }

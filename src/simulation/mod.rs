@@ -24,7 +24,13 @@ impl Plugin for SimulationPlugin {
                         .chain(),
                 );
             })
-            .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush));
+            .edit_schedule(Startup, |s| {
+                s.configure_sets(
+                    (SimulationStartupSet::Spawn, SimulationStartupSet::Flush).chain(),
+                );
+            })
+            .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush))
+            .add_systems(Startup, apply_deferred.in_set(SimulationStartupSet::Flush));
     }
 }
 
@@ -35,4 +41,10 @@ pub enum SimulationSet {
     GenNavigation,
     Move,
     ApplyColliders,
+}
+
+#[derive(SystemSet, Hash, PartialEq, Eq, Clone, Debug)]
+pub enum SimulationStartupSet {
+    Spawn,
+    Flush,
 }

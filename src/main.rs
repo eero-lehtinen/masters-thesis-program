@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::WindowResolution};
 use bevy_framepace::FramepaceSettings;
 use visualization::VisualizationPlugin;
 
@@ -19,7 +19,13 @@ const DELTA_TIME: f32 = 1.0 / FRAME_RATE as f32;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    resolution: WindowResolution::new(700., 700.),
+                    ..default()
+                }),
+                ..default()
+            }),
             SimulationPlugin,
             VisualizationPlugin,
             bevy_framepace::FramepacePlugin,
