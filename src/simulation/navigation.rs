@@ -1,15 +1,15 @@
 use crate::utils::{ToUsizeArr, ToVec2, Vertices};
 use bevy::{
     prelude::*,
-    tasks::{AsyncComputeTaskPool, Task},
     utils::{HashSet, Instant},
 };
-use futures_lite::future;
 use geo_types::Coordinate;
 use itertools::Itertools;
 use ndarray::Array2;
 use offset_polygon::offset_polygon;
 use std::{collections::VecDeque, f32::consts::SQRT_2, iter, sync::Arc, time::Duration};
+
+use super::{level::Level, SimulationSet, SimulationStartupSet};
 
 const NAV_SCALE: f32 = 3.0;
 const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
@@ -20,9 +20,12 @@ pub struct NavigationPlugin;
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<NavGrid>()
-            .init_resource::<FlowField>()
-            .init_resource::<FlowFieldGenerate>();
+        app.init_resource::<FlowField>()
+            .add_systems(Startup, init_nav_grid.in_set(SimulationStartupSet::Spawn))
+            .add_systems(
+                PreUpdate,
+                generate_flow_field_system.in_set(SimulationSet::GenNavigation),
+            );
     }
 }
 
@@ -37,6 +40,11 @@ pub struct NavGridInner {
     walkable: Array2<bool>,
     /// Contains bitsets of directions that can be moved in from a given index
     pub grid: Array2<u8>,
+}
+
+fn init_nav_grid(mut commands: Commands, level: Res<Level>) {
+    let nav_grid = NavGridInner::new(level.size, &level.walls);
+    commands.insert_resource(NavGrid(Arc::new(nav_grid)));
 }
 
 type FlowFieldInner = Array2<(f32, Flow)>;
@@ -226,52 +234,6 @@ impl NavGridInner {
     }
 }
 
-pub fn raycast_debug_system(// my_player_q: Query<&Transform2d, With<MyPlayer>>,
-	// mut lines: ResMut<DebugLines>,
-	// mouse_pos: Res<MousePos>,
-	// nav_grid: Res<NavGrid>,
-) {
-    // let a = 200.;
-    // for i in 0..100 {
-    // 	lines.line_colored(
-    // 		Vec3::new(i as f32 * NAV_SCALE, 0., 0.),
-    // 		Vec3::new(i as f32 * NAV_SCALE, a, 0.),
-    // 		0.,
-    // 		Color::rgb(0., 0., 1.),
-    // 	);
-    // }
-    // for i in 0..100 {
-    // 	lines.line_colored(
-    // 		Vec3::new(0., i as f32 * NAV_SCALE, 0.),
-    // 		Vec3::new(a, i as f32 * NAV_SCALE, 0.),
-    // 		0.,
-    // 		Color::rgb(0., 0., 1.),
-    // 	);
-    // }
-    // let Ok(start) = my_player_q.get_single() else {
-    // 	return;
-    // };
-    // let end = mouse_pos.0;
-    // nav_grid.navigation_raycast_walkable_dda(
-    // 	nav_grid.pos_to_index(start.pos),
-    // 	nav_grid.pos_to_index(end),
-    // 	&mut lines,
-    // );
-}
-
-pub fn pos_to_index_debug_system(// mouse_pos: Res<MousePos>,
-	// nav_grid: Res<NavGrid>,
-	// mut gizmos: Gizmos,
-) {
-    // let idx = nav_grid.pos_to_index(mouse_pos.0);
-    // draw_gizmo_cross(
-    // 	&mut gizmos,
-    // 	NavGridInner::index_to_pos(idx),
-    // 	Color::rgb(1., 0., 0.),
-    // 	0.5,
-    // );
-}
-
 /// Actually returns the "opposite" of the flow, this is used to find the neighbor
 #[inline]
 const fn neighbor_idx([x, y]: [usize; 2], flow: Flow) -> [usize; 2] {
@@ -445,98 +407,6 @@ pub fn generate_flow_field(
     (elapsed, flow_field)
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn wasm_init_generate_flow_field(
-    nav_grid: &Arc<NavGridInner>,
-    sources: &Vec<[usize; 2]>,
-) -> (
-    VecDeque<(f32, [usize; 2])>,
-    VecDeque<(f32, [usize; 2], [usize; 2])>,
-    FlowFieldInner,
-) {
-    let mut flow_field = Array2::from_elem(nav_grid.grid.raw_dim(), (f32::INFINITY, Flow::None));
-
-    let mut queue = VecDeque::new();
-    for &source in sources {
-        queue.push_back((0., source));
-        flow_field[source] = (0., Flow::Source);
-    }
-
-    let mut los_queue = VecDeque::new();
-    for &source in sources {
-        los_queue.push_back((0., source, source));
-    }
-
-    (queue, los_queue, flow_field)
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn wasm_generate_flow_field(
-    nav_grid: &Arc<NavGridInner>,
-    queue: &mut VecDeque<(f32, [usize; 2])>,
-    los_queue: &mut VecDeque<(f32, [usize; 2], [usize; 2])>,
-    flow_field: &mut FlowFieldInner,
-    max_iters: usize,
-) -> (Duration, bool) {
-    let start = Instant::now();
-
-    if !queue.is_empty() {
-        for _ in 0..max_iters {
-            if let Some((dist, idx)) = queue.pop_front() {
-                // Performance improvements (on level nav-stress-test, AMD 5800X3D):
-                // - Check North, East, South, West before diagonals: 14x speedup !!!!
-                // - Use a bitfield instead of checking all 8 directions: 1.5x speedup
-
-                let grid_val = nav_grid.grid[idx];
-                macro_rules! check_neighbor {
-                    ($flow:expr) => {
-                        check_neighbor($flow, dist, grid_val, idx, flow_field, queue)
-                    };
-                }
-                check_neighbor!(Flow::North);
-                check_neighbor!(Flow::East);
-                check_neighbor!(Flow::South);
-                check_neighbor!(Flow::West);
-                check_neighbor!(Flow::NorthEast);
-                check_neighbor!(Flow::SouthEast);
-                check_neighbor!(Flow::SouthWest);
-                check_neighbor!(Flow::NorthWest);
-            }
-        }
-        return (start.elapsed(), false);
-    }
-
-    // Do a second pass with line of sight raycasting
-    if !los_queue.is_empty() {
-        for _ in 0..max_iters {
-            if let Some((dist, idx, source)) = los_queue.pop_front() {
-                if dist > NAV_LINE_OF_SIGHT_DIST {
-                    continue;
-                }
-                let grid_val = nav_grid.grid[idx];
-                macro_rules! check_neighbor_raycast {
-                    ($flow:expr) => {
-                        check_neighbor_raycast(
-                            $flow, idx, grid_val, source, &nav_grid, flow_field, los_queue,
-                        )
-                    };
-                }
-                check_neighbor_raycast!(Flow::North);
-                check_neighbor_raycast!(Flow::East);
-                check_neighbor_raycast!(Flow::South);
-                check_neighbor_raycast!(Flow::West);
-                check_neighbor_raycast!(Flow::NorthEast);
-                check_neighbor_raycast!(Flow::SouthEast);
-                check_neighbor_raycast!(Flow::SouthWest);
-                check_neighbor_raycast!(Flow::NorthWest);
-            }
-        }
-        return (start.elapsed(), false);
-    }
-
-    (start.elapsed(), true)
-}
-
 fn is_point_in_polygon(point: Vec2, vertices: &Vertices) -> bool {
     if vertices.len() < 3 {
         return false;
@@ -600,46 +470,60 @@ fn inflate_polygon(vertices: &Vertices, amount: f32) -> Option<Vertices> {
         .into()
 }
 
-#[derive(Resource, Default)]
-pub struct FlowFieldGenerate {
-    task: Option<Task<(Duration, FlowFieldInner)>>,
-    last_started: Duration,
-}
-
-const MIN_NAV_GEN_INTERVAL: Duration = Duration::from_millis(200);
-
-pub fn start_flow_field_generation_task(
+fn generate_flow_field_system(
     nav_grid: Res<NavGrid>,
-    mut gen: ResMut<FlowFieldGenerate>,
+    mut flow_field: ResMut<FlowField>,
     target_query: Query<&Transform>,
-    time: Res<Time<Virtual>>,
 ) {
-    if gen.task.is_some() || time.elapsed() - gen.last_started < MIN_NAV_GEN_INTERVAL {
-        return;
-    }
     // When the last player dies, just continue going towards the latest corpse
     let targets = target_query
         .iter()
         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
         .collect::<Vec<_>>();
 
-    let nav_grid = nav_grid.clone();
-
-    let task_pool = AsyncComputeTaskPool::get();
-    let task = task_pool.spawn(async move { generate_flow_field(nav_grid, targets) });
-
-    gen.task = Some(task);
-    gen.last_started = time.elapsed();
+    let (duration, flow_field_inner) = generate_flow_field(Arc::clone(&nav_grid), targets);
+    info!("Generated flow field in {:?}", duration);
+    flow_field.0 = flow_field_inner;
 }
 
-pub fn handle_flow_field_task(
-    mut gen: ResMut<FlowFieldGenerate>,
-    mut flow_field: ResMut<FlowField>,
-) {
-    if let Some(task) = gen.task.as_mut() {
-        if let Some((dur, flow_field_res)) = future::block_on(future::poll_once(task)) {
-            flow_field.0 = flow_field_res;
-            gen.task = None;
-        }
-    }
-}
+// #[derive(Resource, Default)]
+// pub struct FlowFieldGenerate {
+//     task: Option<Task<(Duration, FlowFieldInner)>>,
+//     last_started: Duration,
+// }
+// const MIN_NAV_GEN_INTERVAL: Duration = Duration::from_millis(200);
+// pub fn start_flow_field_generation_task(
+//     nav_grid: Res<NavGrid>,
+//     mut gen: ResMut<FlowFieldGenerate>,
+//     target_query: Query<&Transform>,
+//     time: Res<Time<Virtual>>,
+// ) {
+//     if gen.task.is_some() || time.elapsed() - gen.last_started < MIN_NAV_GEN_INTERVAL {
+//         return;
+//     }
+//     // When the last player dies, just continue going towards the latest corpse
+//     let targets = target_query
+//         .iter()
+//         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
+//         .collect::<Vec<_>>();
+//
+//     let nav_grid = nav_grid.clone();
+//
+//     let task_pool = AsyncComputeTaskPool::get();
+//     let task = task_pool.spawn(async move { generate_flow_field(nav_grid, targets) });
+//
+//     gen.task = Some(task);
+//     gen.last_started = time.elapsed();
+// }
+//
+// pub fn handle_flow_field_task(
+//     mut gen: ResMut<FlowFieldGenerate>,
+//     mut flow_field: ResMut<FlowField>,
+// ) {
+//     if let Some(task) = gen.task.as_mut() {
+//         if let Some((dur, flow_field_res)) = future::block_on(future::poll_once(task)) {
+//             flow_field.0 = flow_field_res;
+//             gen.task = None;
+//         }
+//     }
+// }

@@ -18,7 +18,7 @@ impl Plugin for LevelPlugin {
 
 #[derive(Resource)]
 pub struct Level {
-    pub size: Vec2,
+    pub size: f32,
     pub spawn_point: Vec2,
     pub target: Vec2,
     pub walls: Vec<Vertices>,
@@ -27,7 +27,7 @@ pub struct Level {
 impl Level {
     fn get() -> Level {
         Level {
-            size: Vec2::new(100., 100.),
+            size: 100.,
             spawn_point: Vec2::new(10., 10.),
             target: Vec2::new(90., 90.),
             walls: vec![square(10.).with_offset(Vec2::new(50., 50.))],
@@ -103,8 +103,8 @@ fn spawn_level(level: Res<Level>, mut commands: Commands) {
     }
 
     commands.spawn((
-        polyline_collider(rectangle(level.size)),
-        spatial(level.size / 2.),
+        polyline_collider(rectangle(Vec2::splat(level.size))),
+        spatial(Vec2::splat(level.size / 2.)),
     ));
 }
 

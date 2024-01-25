@@ -38,9 +38,9 @@ impl Plugin for VisualizationPlugin {
 fn spawn_camera(mut commands: Commands, level: Res<Level>) {
     commands.spawn((
         Camera2dBundle {
-            transform: Transform::from_xyz(level.size.x / 2., level.size.y / 2., 100.),
+            transform: Transform::from_xyz(level.size / 2., level.size / 2., 100.),
             projection: OrthographicProjection {
-                scaling_mode: ScalingMode::FixedVertical(level.size.y),
+                scaling_mode: ScalingMode::FixedVertical(level.size),
                 ..default()
             },
             ..default()
