@@ -565,16 +565,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_framepace"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1d578148e4fa221922ec8a71dc1b619ca5b9a422ac1578bb45717a4415514a7"
-dependencies = [
- "bevy",
- "spin_sleep",
-]
-
-[[package]]
 name = "bevy_gilrs"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2344,7 +2334,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bevy",
- "bevy_framepace",
  "bevy_pancam",
  "bevy_rapier2d",
  "earcutr",
@@ -2355,6 +2344,7 @@ dependencies = [
  "offset-polygon",
  "rand",
  "rand_xoshiro",
+ "spin_sleep",
 ]
 
 [[package]]

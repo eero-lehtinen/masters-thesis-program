@@ -1,36 +1,47 @@
 use bevy::prelude::*;
 
-use self::{collision::CollisionPlugin, level::LevelPlugin, navigation::NavigationPlugin};
+use self::{
+    collision::CollisionPlugin, level::LevelPlugin, local_avoidance::LocalAvoidancePlugin,
+    movement::MovementPlugin, navigation::NavigationPlugin,
+};
 
 mod collision;
 pub mod level;
-mod navigation;
+mod local_avoidance;
+mod movement;
+pub mod navigation;
 mod rng;
 
 pub struct SimulationPlugin;
 
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((NavigationPlugin, CollisionPlugin, LevelPlugin))
-            .edit_schedule(PreUpdate, |s| {
-                s.configure_sets(
-                    (
-                        SimulationSet::Spawn,
-                        SimulationSet::Flush,
-                        SimulationSet::GenNavigation,
-                        SimulationSet::Move,
-                        SimulationSet::ApplyColliders,
-                    )
-                        .chain(),
-                );
-            })
-            .edit_schedule(Startup, |s| {
-                s.configure_sets(
-                    (SimulationStartupSet::Spawn, SimulationStartupSet::Flush).chain(),
-                );
-            })
-            .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush))
-            .add_systems(Startup, apply_deferred.in_set(SimulationStartupSet::Flush));
+        app.add_plugins((
+            NavigationPlugin,
+            MovementPlugin,
+            LocalAvoidancePlugin,
+            // CollisionPlugin,
+            LevelPlugin,
+        ))
+        .edit_schedule(PreUpdate, |s| {
+            s.configure_sets(
+                (
+                    SimulationSet::Despawn,
+                    SimulationSet::Spawn,
+                    SimulationSet::Flush,
+                    SimulationSet::GenNavigation,
+                    SimulationSet::Move,
+                    SimulationSet::LocalAvoidance,
+                    SimulationSet::ApplyColliders,
+                )
+                    .chain(),
+            );
+        })
+        .edit_schedule(Startup, |s| {
+            s.configure_sets((SimulationStartupSet::Spawn, SimulationStartupSet::Flush).chain());
+        })
+        .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush))
+        .add_systems(Startup, apply_deferred.in_set(SimulationStartupSet::Flush));
     }
 }
 
@@ -40,6 +51,8 @@ pub enum SimulationSet {
     Flush,
     GenNavigation,
     Move,
+    Despawn,
+    LocalAvoidance,
     ApplyColliders,
 }
 

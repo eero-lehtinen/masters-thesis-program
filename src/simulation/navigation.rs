@@ -9,12 +9,13 @@ use ndarray::Array2;
 use offset_polygon::offset_polygon;
 use std::{collections::VecDeque, f32::consts::SQRT_2, iter, sync::Arc, time::Duration};
 
-use super::{level::Level, SimulationSet, SimulationStartupSet};
+use super::{
+    level::{Level, Target, ENEMY_RADIUS},
+    SimulationSet, SimulationStartupSet,
+};
 
-const NAV_SCALE: f32 = 3.0;
+pub const NAV_SCALE: f32 = ENEMY_RADIUS * 2.;
 const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
-
-const ENEMY_RADIUS: f32 = 3.0;
 
 pub struct NavigationPlugin;
 
@@ -47,7 +48,7 @@ fn init_nav_grid(mut commands: Commands, level: Res<Level>) {
     commands.insert_resource(NavGrid(Arc::new(nav_grid)));
 }
 
-type FlowFieldInner = Array2<(f32, Flow)>;
+pub type FlowFieldInner = Array2<(f32, Flow)>;
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct FlowField(pub FlowFieldInner);
@@ -333,7 +334,7 @@ fn check_neighbor_raycast(
 
 const NAV_LINE_OF_SIGHT_DIST: f32 = 30.;
 
-pub fn generate_flow_field(
+pub fn generate_flow_field_impl(
     nav_grid: Arc<NavGridInner>,
     sources: Vec<[usize; 2]>,
 ) -> (Duration, FlowFieldInner) {
@@ -473,7 +474,7 @@ fn inflate_polygon(vertices: &Vertices, amount: f32) -> Option<Vertices> {
 fn generate_flow_field_system(
     nav_grid: Res<NavGrid>,
     mut flow_field: ResMut<FlowField>,
-    target_query: Query<&Transform>,
+    target_query: Query<&Transform, With<Target>>,
 ) {
     // When the last player dies, just continue going towards the latest corpse
     let targets = target_query
@@ -481,8 +482,7 @@ fn generate_flow_field_system(
         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
         .collect::<Vec<_>>();
 
-    let (duration, flow_field_inner) = generate_flow_field(Arc::clone(&nav_grid), targets);
-    info!("Generated flow field in {:?}", duration);
+    let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
     flow_field.0 = flow_field_inner;
 }
 

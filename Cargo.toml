@@ -3,7 +3,19 @@ name = "masters-thesis-program"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+bench = []
+
+[profile.dev]
+debug = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.release]
+incremental = true
 
 [dependencies]
 bevy = "0.12.1"
@@ -16,9 +28,9 @@ ndarray = "0.15.6"
 geo-types = "0.4"
 offset-polygon = "0.1.0"
 itertools = "0.12.0"
-bevy_framepace = "0.14.1"
 bevy_pancam = "0.10.0"
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 earcutr = "0.4.3"
 anyhow = "1.0.79"
+spin_sleep = "1.2.0"

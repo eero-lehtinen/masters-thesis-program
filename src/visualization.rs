@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{
     prelude::*,
     render::{camera::ScalingMode, mesh::Indices, render_resource::PrimitiveTopology},
@@ -8,10 +10,11 @@ use itertools::Itertools;
 
 use crate::{
     simulation::{
-        level::{Enemy, Level, Wall, ENEMY_RADIUS},
+        level::{Enemy, Level, SpawnPoint, Target, Wall, ENEMY_RADIUS},
+        navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE},
         SimulationStartupSet,
     },
-    utils::Vertices,
+    utils::{square, Vertices, WithOffset},
 };
 
 pub struct VisualizationPlugin;
@@ -20,20 +23,34 @@ impl Plugin for VisualizationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((PanCamPlugin,))
             .insert_resource(GizmoConfig {
-                line_width: 2.,
+                line_width: 2.0,
                 ..default()
             })
             .insert_resource(ClearColor(Color::rgb_u8(222, 220, 227)))
+            .insert_resource(ShowFlowField(true))
             .add_systems(
                 Startup,
                 (
                     spawn_camera,
-                    (add_wall_meshes,).after(SimulationStartupSet::Flush),
+                    (add_wall_meshes, add_target_sprites, add_spawn_point_sprites)
+                        .after(SimulationStartupSet::Flush),
                 ),
             )
-            .add_systems(Update, (print_cam_pos, add_enemy_sprites));
+            .add_systems(
+                Update,
+                (
+                    print_cam_pos,
+                    add_enemy_sprites,
+                    draw_level_bounds,
+                    toggle_show_flow_field,
+                    draw_flow_field.run_if(resource_equals(ShowFlowField(true))),
+                ),
+            );
     }
 }
+
+#[derive(Resource, PartialEq, Eq)]
+struct ShowFlowField(bool);
 
 fn spawn_camera(mut commands: Commands, level: Res<Level>) {
     commands.spawn((
@@ -68,6 +85,40 @@ fn add_enemy_sprites(
                 ..default()
             },
             asset_server.load::<Image>("circle.png"),
+        ));
+    }
+}
+
+fn add_target_sprites(
+    mut commands: Commands,
+    new_target_q: Query<Entity, Added<Target>>,
+    asset_server: Res<AssetServer>,
+) {
+    for entity in new_target_q.iter() {
+        commands.entity(entity).insert((
+            Sprite {
+                color: Color::rgb_u8(31, 39, 240).with_a(0.8),
+                custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
+                ..default()
+            },
+            asset_server.load::<Image>("cross.png"),
+        ));
+    }
+}
+
+fn add_spawn_point_sprites(
+    mut commands: Commands,
+    new_spawn_point_q: Query<Entity, Added<SpawnPoint>>,
+    asset_server: Res<AssetServer>,
+) {
+    for entity in new_spawn_point_q.iter() {
+        commands.entity(entity).insert((
+            Sprite {
+                color: Color::rgb_u8(136, 2, 214).with_a(0.8),
+                custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
+                ..default()
+            },
+            asset_server.load::<Image>("hollow_circle.png"),
         ));
     }
 }
@@ -113,5 +164,70 @@ fn add_wall_meshes(
             Mesh2dHandle(meshes.add(make_triangulated_mesh(&wall.0).unwrap())),
             material.clone(),
         ));
+    }
+}
+
+fn draw_level_bounds(mut gizmos: Gizmos, level: Res<Level>) {
+    let bounds = square(level.size).with_offset(Vec2::splat(level.size / 2.));
+    for (p1, p2) in bounds.iter().zip(bounds.iter().cycle().skip(1)) {
+        gizmos.line_2d(*p1, *p2, Color::BLACK);
+    }
+}
+
+pub fn draw_gizmo_cross(gizmos: &mut Gizmos, pos: Vec2, color: Color, size: f32) {
+    gizmos.line_2d(
+        pos - Vec2::new(0.0, size),
+        pos + Vec2::new(0.0, size),
+        color,
+    );
+    gizmos.line_2d(
+        pos - Vec2::new(size, 0.0),
+        pos + Vec2::new(size, 0.0),
+        color,
+    );
+}
+
+fn toggle_show_flow_field(input: Res<Input<KeyCode>>, mut show_flow_field: ResMut<ShowFlowField>) {
+    if input.just_pressed(KeyCode::F) {
+        println!("Toggling flow field");
+        show_flow_field.0 = !show_flow_field.0;
+    }
+}
+
+fn draw_flow_field(
+    flow_field: Res<FlowField>,
+    nav_grid: Res<NavGrid>,
+    mut gizmos: Gizmos,
+    camera_q: Query<&Transform, With<Camera>>,
+) {
+    let camera_tr = camera_q.single();
+    let camera_pos_index = nav_grid.pos_to_index(camera_tr.translation.truncate());
+
+    let cx = camera_pos_index[0];
+    let cy = camera_pos_index[1];
+
+    let extent = 140;
+
+    for x in cx.saturating_sub(extent)..(cx + extent).min(flow_field.0.shape()[0]) {
+        for y in cy.saturating_sub(extent)..(cy + extent).min(flow_field.0.shape()[1]) {
+            let (_dist, flow) = flow_field.0[[x, y]];
+            let pos = NavGridInner::index_to_pos([x, y]);
+            if flow == Flow::None {
+                gizmos.line_2d(
+                    pos - Vec2::new(0.0, 0.2),
+                    pos + Vec2::new(0.0, 0.2),
+                    Color::RED,
+                );
+                continue;
+            }
+
+            if flow == Flow::Source {
+                draw_gizmo_cross(&mut gizmos, pos, Color::GREEN, NAV_SCALE);
+                continue;
+            }
+
+            let dir = flow.to_dir() * NAV_SCALE * 2.0f32.sqrt() * 0.5;
+            gizmos.line_gradient_2d(pos - dir, pos + dir, Color::BLACK.with_a(0.5), Color::BLACK);
+        }
     }
 }
