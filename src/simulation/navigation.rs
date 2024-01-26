@@ -14,7 +14,7 @@ use super::{
     SimulationSet, SimulationStartupSet,
 };
 
-pub const NAV_SCALE: f32 = ENEMY_RADIUS * 2.;
+pub const NAV_SCALE: f32 = ENEMY_RADIUS;
 const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
 
 pub struct NavigationPlugin;
@@ -123,13 +123,6 @@ impl Flow {
             Self::SouthWest => 0b0100_0000,
             Self::NorthWest => 0b1000_0000,
         }
-    }
-
-    pub fn is_diagonal(self) -> bool {
-        matches!(
-            self,
-            Self::NorthEast | Self::SouthEast | Self::SouthWest | Self::NorthWest
-        )
     }
 
     const DIRECTIONALS: [Self; 8] = [
@@ -489,7 +482,7 @@ fn generate_flow_field_system(
         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
         .collect::<Vec<_>>();
 
-    let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
+    let (_duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
     flow_field.0 = flow_field_inner;
 }
 

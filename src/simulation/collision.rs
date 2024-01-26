@@ -34,8 +34,8 @@ impl Plugin for CollisionPlugin {
     }
 }
 
-pub const GROUP_WALL: Group = Group::GROUP_1;
-pub const GROUP_ENEMY: Group = Group::GROUP_3;
+pub const _GROUP_WALL: Group = Group::GROUP_1;
+pub const _GROUP_ENEMY: Group = Group::GROUP_3;
 
 fn transform_to_iso(transform: &Transform, physics_scale: f32) -> Isometry<f32> {
     Isometry::new(

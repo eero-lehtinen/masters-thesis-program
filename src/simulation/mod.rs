@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use self::{
-    collision::CollisionPlugin, level::LevelPlugin, local_avoidance::LocalAvoidancePlugin,
-    movement::MovementPlugin, navigation::NavigationPlugin,
+    level::LevelPlugin, local_avoidance::LocalAvoidancePlugin, movement::MovementPlugin,
+    navigation::NavigationPlugin,
 };
 
 mod collision;
