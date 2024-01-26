@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::FRAC_PI_2;
 
 use bevy::{
     prelude::*,
@@ -14,7 +14,7 @@ use crate::{
         navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE},
         SimulationStartupSet,
     },
-    utils::{square, Vertices, WithOffset},
+    utils::{square, Easing, ToAngle, Vertices, WithOffset},
 };
 
 pub struct VisualizationPlugin;
@@ -175,6 +175,7 @@ fn draw_level_bounds(mut gizmos: Gizmos, level: Res<Level>) {
 }
 
 pub fn draw_gizmo_cross(gizmos: &mut Gizmos, pos: Vec2, color: Color, size: f32) {
+    let size = size * 0.5;
     gizmos.line_2d(
         pos - Vec2::new(0.0, size),
         pos + Vec2::new(0.0, size),
@@ -189,7 +190,7 @@ pub fn draw_gizmo_cross(gizmos: &mut Gizmos, pos: Vec2, color: Color, size: f32)
 
 fn toggle_show_flow_field(input: Res<Input<KeyCode>>, mut show_flow_field: ResMut<ShowFlowField>) {
     if input.just_pressed(KeyCode::F) {
-        println!("Toggling flow field");
+        info!("Toggling flow field");
         show_flow_field.0 = !show_flow_field.0;
     }
 }
@@ -208,9 +209,27 @@ fn draw_flow_field(
 
     let extent = 140;
 
-    for x in cx.saturating_sub(extent)..(cx + extent).min(flow_field.0.shape()[0]) {
-        for y in cy.saturating_sub(extent)..(cy + extent).min(flow_field.0.shape()[1]) {
-            let (_dist, flow) = flow_field.0[[x, y]];
+    let range_x = cx.saturating_sub(extent)..(cx + extent).min(flow_field.0.shape()[0]);
+    let range_y = cy.saturating_sub(extent)..(cy + extent).min(flow_field.0.shape()[1]);
+
+    // Draw grid lines
+    for x in range_x.clone() {
+        let pos = NavGridInner::index_to_pos([x, range_y.start]) + Vec2::splat(NAV_SCALE * 0.5);
+        let end_pos =
+            NavGridInner::index_to_pos([x, range_y.end - 1]) + Vec2::splat(NAV_SCALE * 0.5);
+        gizmos.line_2d(pos, end_pos, Color::BLACK.with_a(0.2));
+    }
+    for y in range_y.clone() {
+        let pos = NavGridInner::index_to_pos([range_x.start, y]) + Vec2::splat(NAV_SCALE * 0.5);
+        let end_pos =
+            NavGridInner::index_to_pos([range_x.end - 1, y]) + Vec2::splat(NAV_SCALE * 0.5);
+        gizmos.line_2d(pos, end_pos, Color::BLACK.with_a(0.2));
+    }
+
+    // Draw flow field
+    for x in range_x.clone() {
+        for y in range_y.clone() {
+            let (dist, flow) = flow_field.0[[x, y]];
             let pos = NavGridInner::index_to_pos([x, y]);
             if flow == Flow::None {
                 gizmos.line_2d(
@@ -226,8 +245,13 @@ fn draw_flow_field(
                 continue;
             }
 
-            let dir = flow.to_dir() * NAV_SCALE * 2.0f32.sqrt() * 0.5;
-            gizmos.line_gradient_2d(pos - dir, pos + dir, Color::BLACK.with_a(0.5), Color::BLACK);
+            let angle = flow.to_dir().to_angle().rem_euclid(FRAC_PI_2);
+            let dir = flow.to_dir() * (1. / angle.cos().max(angle.sin())) * 0.5 * NAV_SCALE;
+            gizmos.line_2d(
+                pos - dir,
+                pos + dir,
+                Color::SEA_GREEN.lerp(Color::BLACK, dist / 100.),
+            );
         }
     }
 }

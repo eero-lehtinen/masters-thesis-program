@@ -22,6 +22,16 @@ impl ToUsizeArr for Vec2 {
     }
 }
 
+pub trait ToAngle {
+    fn to_angle(&self) -> f32;
+}
+
+impl ToAngle for Vec2 {
+    fn to_angle(&self) -> f32 {
+        self.y.atan2(self.x)
+    }
+}
+
 pub fn square(size: f32) -> Vertices {
     rectangle(Vec2::splat(size))
 }
@@ -57,5 +67,16 @@ pub trait Easing {
 impl Easing for f32 {
     fn lerp(self, b: Self, f: f32) -> Self {
         self * (1. - f) + b * f
+    }
+}
+
+impl Easing for Color {
+    fn lerp(self, b: Self, f: f32) -> Self {
+        Color::rgba(
+            self.r().lerp(b.r(), f),
+            self.g().lerp(b.g(), f),
+            self.b().lerp(b.b(), f),
+            self.a().lerp(b.a(), f),
+        )
     }
 }
