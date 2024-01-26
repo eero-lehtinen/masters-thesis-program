@@ -22,6 +22,7 @@ pub struct NavigationPlugin;
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FlowField>()
+            .init_resource::<NavStatistics>()
             .add_systems(Startup, init_nav_grid.in_set(SimulationStartupSet::Spawn))
             .add_systems(
                 PreUpdate,
@@ -32,6 +33,9 @@ impl Plugin for NavigationPlugin {
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct NavGrid(pub Arc<NavGridInner>);
+
+#[derive(Resource, Default)]
+pub struct NavStatistics(Vec<f64>);
 
 #[derive(Default)]
 pub struct NavGridInner {
@@ -475,6 +479,7 @@ fn generate_flow_field_system(
     nav_grid: Res<NavGrid>,
     mut flow_field: ResMut<FlowField>,
     target_query: Query<&Transform, With<Target>>,
+    mut stats: ResMut<NavStatistics>,
 ) {
     // When the last player dies, just continue going towards the latest corpse
     let targets = target_query
@@ -482,7 +487,8 @@ fn generate_flow_field_system(
         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
         .collect::<Vec<_>>();
 
-    let (_duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
+    let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
+    stats.0.push(duration.as_secs_f64());
     flow_field.0 = flow_field_inner;
 }
 

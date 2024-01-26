@@ -1,9 +1,6 @@
 use bevy::{prelude::*, utils::Instant};
 
-use crate::{
-    utils::{Easing, Velocity},
-    DELTA_TIME,
-};
+use crate::{utils::Velocity, DELTA_TIME};
 
 use super::{
     level::{Enemy, Level, ENEMY_RADIUS},
@@ -15,37 +12,54 @@ pub struct LocalAvoidancePlugin;
 
 impl Plugin for LocalAvoidancePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SpatialGridHash>().add_systems(
-            PreUpdate,
-            (make_spatial, keep_distance_to_others, reset_spatial_grid)
-                .chain()
-                .in_set(SimulationSet::LocalAvoidance),
-        );
+        app.init_resource::<SpatialStructure>()
+            .init_resource::<LocalAvoidanceStatistics>()
+            .add_systems(Startup, init_spatial)
+            .add_systems(
+                PreUpdate,
+                (make_spatial, keep_distance_to_others)
+                    .chain()
+                    .in_set(SimulationSet::LocalAvoidance),
+            );
     }
+}
+
+#[derive(Resource, Default)]
+pub struct LocalAvoidanceStatistics {
+    pub spatial_reset: Vec<f64>,
+    pub spatial_generate: Vec<f64>,
+    pub avoidance: Vec<f64>,
+}
+
+fn init_spatial(mut spatial: ResMut<SpatialStructure>, level: Res<Level>) {
+    *spatial = SpatialStructure::new(level.size);
+}
+
+pub fn make_spatial(
+    enemy_q: Query<(Entity, &Transform), With<Enemy>>,
+    mut spatial: ResMut<SpatialStructure>,
+    mut statistics: ResMut<LocalAvoidanceStatistics>,
+) {
+    let start = Instant::now();
+    spatial.reset();
+    let elapsed = start.elapsed();
+    enemy_q.for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
+    let elapsed2 = start.elapsed();
+    statistics.spatial_reset.push(elapsed.as_secs_f64());
+    statistics
+        .spatial_generate
+        .push((elapsed2 - elapsed).as_secs_f64());
 }
 
 const PREFERRED_DISTANCE: f32 = ENEMY_RADIUS * 1.5;
 const SAFETY_MARGIN: f32 = 0.0001;
 
-const LOG_LOCAL_AVOIDANCE_DIAG: bool = false;
-
-pub fn make_spatial(
-    enemy_q: Query<(Entity, &Transform), With<Enemy>>,
-    mut spatial: ResMut<SpatialGridHash>,
-    level: Res<Level>,
-) {
-    spatial.reset(level.size);
-    enemy_q.for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
-    spatial.make_dirty();
-}
-
 pub fn keep_distance_to_others(
     mut enemy_q: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
     nav_grid: Res<NavGrid>,
     flow_field: Res<FlowField>,
-    spatial: Res<SpatialGridHash>,
-    mut avg: Local<f32>,
-    mut log_counter: Local<u32>,
+    spatial: Res<SpatialStructure>,
+    mut stats: ResMut<LocalAvoidanceStatistics>,
 ) {
     let start = Instant::now();
 
@@ -61,10 +75,6 @@ pub fn keep_distance_to_others(
                 return;
             };
             for &(entity, pos) in items {
-                // SAFETY:
-                // Each entity is only once in the spatial grid, so we don't get mutable aliasing in parallel iteration
-                // so get_component_unchecked_mut is safe.
-                // Also entities can't disappear while iterating so unwrap_unchecked is quaranteed to succeed.
                 let Ok((mut translation, mut velocity)) = enemy_q.get_mut(entity) else {
                     continue;
                 };
@@ -98,49 +108,33 @@ pub fn keep_distance_to_others(
                 }
             }
         });
-    if LOG_LOCAL_AVOIDANCE_DIAG {
-        let end = start.elapsed();
-        *avg = avg.lerp(end.as_secs_f32() * 1000., 0.1);
-        *log_counter += 1;
-        if *log_counter % 60 == 0 {
-            info!("total: {:?}, avg: {:?}", end, *avg);
-        }
-        // spatial.print_stats();
-    }
-}
-
-// This is run in Update to save time in fixed update
-pub fn reset_spatial_grid(mut spatial: ResMut<SpatialGridHash>, level: Res<Level>) {
-    spatial.reset(level.size);
+    stats.avoidance.push(start.elapsed().as_secs_f64());
 }
 
 const SPATIAL_CELL_SIZE: f32 = PREFERRED_DISTANCE;
 const SPATIAL_CELL_SIZE_INV: f32 = 1.0 / SPATIAL_CELL_SIZE;
 
 #[derive(Debug, Clone, Default, Resource)]
-pub struct SpatialGridHash {
+pub struct SpatialStructure {
     level_size: f32,
     size: usize,
     pub grid: Vec<Vec<(Entity, Vec2)>>,
-    reset: bool,
 }
 
 const DEFAULT_CELL_CAPACITY: usize = 16;
 
-impl SpatialGridHash {
-    pub fn reset(&mut self, level_size: f32) {
-        #[allow(clippy::float_cmp)]
-        if self.reset && self.level_size == level_size {
-            return;
+impl SpatialStructure {
+    pub fn new(level_size: f32) -> Self {
+        let size = (level_size * SPATIAL_CELL_SIZE_INV + 2.) as usize;
+        Self {
+            level_size,
+            size,
+            grid: vec![Vec::with_capacity(DEFAULT_CELL_CAPACITY); size * size],
         }
-        self.level_size = level_size;
+    }
+
+    pub fn reset(&mut self) {
         self.grid.iter_mut().for_each(Vec::clear);
-        self.size = (level_size * SPATIAL_CELL_SIZE_INV + 2.) as usize;
-        self.grid.resize(
-            self.size * self.size,
-            Vec::with_capacity(DEFAULT_CELL_CAPACITY),
-        );
-        self.reset = true;
     }
 
     pub fn insert(&mut self, (entity, pos): (Entity, Vec2)) {
@@ -149,11 +143,6 @@ impl SpatialGridHash {
         if a.len() < 100 {
             a.push((entity, pos));
         }
-    }
-
-    // Should be called after all inserts are done
-    pub fn make_dirty(&mut self) {
-        self.reset = false;
     }
 
     pub fn get(&self, cell: usize) -> Option<[&[(Entity, Vec2)]; 9]> {
