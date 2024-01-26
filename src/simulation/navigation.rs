@@ -1,5 +1,9 @@
-use crate::utils::{ToUsizeArr, ToVec2, Vertices};
+use crate::{
+    statistics::Statistics,
+    utils::{ToUsizeArr, ToVec2, Vertices},
+};
 use bevy::{
+    ecs::system::SystemState,
     prelude::*,
     utils::{HashSet, Instant},
 };
@@ -22,7 +26,6 @@ pub struct NavigationPlugin;
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FlowField>()
-            .init_resource::<NavStatistics>()
             .add_systems(Startup, init_nav_grid.in_set(SimulationStartupSet::Spawn))
             .add_systems(
                 PreUpdate,
@@ -33,9 +36,6 @@ impl Plugin for NavigationPlugin {
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct NavGrid(pub Arc<NavGridInner>);
-
-#[derive(Resource, Default)]
-pub struct NavStatistics(Vec<f64>);
 
 #[derive(Default)]
 pub struct NavGridInner {
@@ -478,17 +478,17 @@ fn inflate_polygon(vertices: &Vertices, amount: f32) -> Option<Vertices> {
 fn generate_flow_field_system(
     nav_grid: Res<NavGrid>,
     mut flow_field: ResMut<FlowField>,
-    target_query: Query<&Transform, With<Target>>,
-    mut stats: ResMut<NavStatistics>,
+    target_q: Query<&Transform, With<Target>>,
+    mut stats: ResMut<Statistics>,
 ) {
     // When the last player dies, just continue going towards the latest corpse
-    let targets = target_query
+    let targets = target_q
         .iter()
         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
         .collect::<Vec<_>>();
 
     let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
-    stats.0.push(duration.as_secs_f64());
+    stats.0.entry("flow_field").or_default().push(duration);
     flow_field.0 = flow_field_inner;
 }
 

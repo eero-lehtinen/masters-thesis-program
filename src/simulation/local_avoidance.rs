@@ -1,6 +1,6 @@
 use bevy::{prelude::*, utils::Instant};
 
-use crate::{utils::Velocity, DELTA_TIME};
+use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use super::{
     level::{Enemy, Level, ENEMY_RADIUS},
@@ -13,7 +13,6 @@ pub struct LocalAvoidancePlugin;
 impl Plugin for LocalAvoidancePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SpatialStructure>()
-            .init_resource::<LocalAvoidanceStatistics>()
             .add_systems(Startup, init_spatial)
             .add_systems(
                 PreUpdate,
@@ -24,13 +23,6 @@ impl Plugin for LocalAvoidancePlugin {
     }
 }
 
-#[derive(Resource, Default)]
-pub struct LocalAvoidanceStatistics {
-    pub spatial_reset: Vec<f64>,
-    pub spatial_generate: Vec<f64>,
-    pub avoidance: Vec<f64>,
-}
-
 fn init_spatial(mut spatial: ResMut<SpatialStructure>, level: Res<Level>) {
     *spatial = SpatialStructure::new(level.size);
 }
@@ -38,17 +30,19 @@ fn init_spatial(mut spatial: ResMut<SpatialStructure>, level: Res<Level>) {
 pub fn make_spatial(
     enemy_q: Query<(Entity, &Transform), With<Enemy>>,
     mut spatial: ResMut<SpatialStructure>,
-    mut statistics: ResMut<LocalAvoidanceStatistics>,
+    mut stats: ResMut<Statistics>,
 ) {
     let start = Instant::now();
     spatial.reset();
     let elapsed = start.elapsed();
     enemy_q.for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
     let elapsed2 = start.elapsed();
-    statistics.spatial_reset.push(elapsed.as_secs_f64());
-    statistics
-        .spatial_generate
-        .push((elapsed2 - elapsed).as_secs_f64());
+    stats.0.entry("spatial_reset").or_default().push(elapsed);
+    stats
+        .0
+        .entry("spatial_gen")
+        .or_default()
+        .push(elapsed2 - elapsed);
 }
 
 const PREFERRED_DISTANCE: f32 = ENEMY_RADIUS * 1.5;
@@ -59,7 +53,7 @@ pub fn keep_distance_to_others(
     nav_grid: Res<NavGrid>,
     flow_field: Res<FlowField>,
     spatial: Res<SpatialStructure>,
-    mut stats: ResMut<LocalAvoidanceStatistics>,
+    mut stats: ResMut<Statistics>,
 ) {
     let start = Instant::now();
 
@@ -108,7 +102,11 @@ pub fn keep_distance_to_others(
                 }
             }
         });
-    stats.avoidance.push(start.elapsed().as_secs_f64());
+    stats
+        .0
+        .entry("avoidance")
+        .or_default()
+        .push(start.elapsed());
 }
 
 const SPATIAL_CELL_SIZE: f32 = PREFERRED_DISTANCE;

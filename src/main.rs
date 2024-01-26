@@ -2,12 +2,14 @@
 
 use bevy::{app::AppExit, prelude::*, window::WindowResolution};
 use framepace::{FramepacePlugin, FramepaceSettings, Limiter};
+use statistics::StatisticsPlugin;
 use visualization::VisualizationPlugin;
 
 use crate::simulation::SimulationPlugin;
 
 mod framepace;
 pub mod simulation;
+pub mod statistics;
 pub mod utils;
 pub mod visualization;
 
@@ -32,24 +34,33 @@ fn main() {
                 SimulationPlugin,
                 VisualizationPlugin,
                 FramepacePlugin,
+                StatisticsPlugin,
             ))
             .insert_resource(FramepaceSettings {
                 limiter: Limiter::from_framerate(FRAME_RATE as f64),
             })
-            .add_systems(PostUpdate, exit_bench)
+            .init_resource::<Ticks>()
+            .add_systems(PostUpdate, update_tick)
             .run();
     } else {
-        App::new()
-            .add_plugins((MinimalPlugins, SimulationPlugin))
-            .add_systems(PostUpdate, exit_bench)
-            .run();
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, SimulationPlugin, StatisticsPlugin))
+            .init_resource::<Ticks>()
+            .add_systems(PostUpdate, (update_tick, exit_bench).chain());
+        // bevy_mod_debugdump::print_schedule_graph(&mut app, PreUpdate);
+        app.run();
     }
 }
 
-fn exit_bench(mut exit: ResMut<Events<AppExit>>, mut ticks: Local<u32>) {
-    if *ticks >= BENCHMARK_TICKS {
+#[derive(Resource, Default)]
+pub struct Ticks(pub u32);
+
+fn update_tick(mut ticks: ResMut<Ticks>) {
+    ticks.0 += 1;
+}
+
+fn exit_bench(mut exit: ResMut<Events<AppExit>>, ticks: Res<Ticks>) {
+    if ticks.0 >= BENCHMARK_TICKS {
         exit.send(AppExit);
-    } else {
-        *ticks += 1;
     }
 }

@@ -1,4 +1,5 @@
 use std::f32::consts::FRAC_PI_2;
+use std::time::Duration;
 
 use bevy::{
     prelude::*,
@@ -14,7 +15,9 @@ use crate::{
         navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE},
         SimulationStartupSet,
     },
+    statistics::Statistics,
     utils::{square, Easing, ToAngle, Vertices, WithOffset},
+    Ticks,
 };
 
 pub struct VisualizationPlugin;
@@ -31,7 +34,7 @@ impl Plugin for VisualizationPlugin {
             .add_systems(
                 Startup,
                 (
-                    spawn_camera,
+                    (spawn_camera, init_diagnostics_text),
                     (add_wall_meshes, add_target_sprites, add_spawn_point_sprites)
                         .after(SimulationStartupSet::Flush),
                 ),
@@ -39,11 +42,11 @@ impl Plugin for VisualizationPlugin {
             .add_systems(
                 Update,
                 (
-                    print_cam_pos,
                     add_enemy_sprites,
                     draw_level_bounds,
                     toggle_show_flow_field,
                     draw_flow_field.run_if(resource_equals(ShowFlowField(true))),
+                    update_diagnostics_text,
                 ),
             );
     }
@@ -64,12 +67,6 @@ fn spawn_camera(mut commands: Commands, level: Res<Level>) {
         },
         PanCam::default(),
     ));
-}
-
-fn print_cam_pos(mut _query: Query<&Transform, With<Camera>>) {
-    // for cam in query.iter_mut() {
-    //     println!("cam pos: {:?}", cam.translation);
-    // }
 }
 
 fn add_enemy_sprites(
@@ -254,4 +251,57 @@ fn draw_flow_field(
             );
         }
     }
+}
+
+#[derive(Component)]
+struct StatsText;
+
+fn init_diagnostics_text(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                left: Val::Px(5.),
+                top: Val::Px(5.),
+                width: Val::Px(300.),
+                padding: UiRect::all(Val::Px(5.)),
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            background_color: Color::BLACK.with_a(0.9).into(),
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn((
+                StatsText,
+                TextBundle::from_section(
+                    "",
+                    TextStyle {
+                        font: asset_server.load("Hack-Regular.ttf"),
+                        font_size: 18.0,
+                        color: Color::WHITE,
+                    },
+                ),
+            ));
+        });
+}
+
+fn avg20(v: &[Duration]) -> Duration {
+    let sum = v.iter().rev().take(20).sum::<Duration>();
+    sum / v.len() as u32
+}
+
+fn update_diagnostics_text(
+    mut text_q: Query<&mut Text, With<StatsText>>,
+    stats: Res<Statistics>,
+    tick: Res<Ticks>,
+) {
+    let mut text = text_q.single_mut();
+
+    text.sections[0].value = format!("tick: {}\n", tick.0)
+        + &stats
+            .0
+            .iter()
+            .map(|(k, v)| format!("{k:14 }: {:?}", avg20(v)))
+            .sorted()
+            .join("\n");
 }

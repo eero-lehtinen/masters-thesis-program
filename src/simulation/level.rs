@@ -46,6 +46,20 @@ impl Level {
             ],
             walls: vec![square(50.).with_offset(Vec2::new(50., 50.))],
         }
+        .scaled(3.)
+    }
+
+    fn scaled(self, scale: f32) -> Level {
+        Level {
+            size: self.size * scale,
+            spawn_points: self.spawn_points.into_iter().map(|p| p * scale).collect(),
+            targets: self.targets.into_iter().map(|p| p * scale).collect(),
+            walls: self
+                .walls
+                .into_iter()
+                .map(|v| v.into_iter().map(|p| p * scale).collect())
+                .collect(),
+        }
     }
 }
 

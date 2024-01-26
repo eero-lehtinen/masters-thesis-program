@@ -1,6 +1,6 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::Instant};
 
-use crate::{utils::Velocity, DELTA_TIME};
+use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use super::{
     level::Enemy,
@@ -22,7 +22,9 @@ pub fn move_with_flow_field(
     nav_grid: Res<NavGrid>,
     flow_field: Res<FlowField>,
     mut enemy_q: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
+    mut stats: ResMut<Statistics>,
 ) {
+    let start = Instant::now();
     enemy_q
         .iter_mut()
         .for_each(|(mut transform, mut velocity)| {
@@ -63,4 +65,6 @@ pub fn move_with_flow_field(
                 velocity.0 = Vec2::ZERO;
             }
         });
+
+    stats.0.entry("movement").or_default().push(start.elapsed());
 }
