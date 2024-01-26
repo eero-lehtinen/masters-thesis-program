@@ -49,7 +49,7 @@ fn main() {
             SimulationPlugin,
             StatisticsPlugin,
         ))
-        .add_systems(First, exit_bench.chain());
+        .add_systems(First, exit_bench);
         // bevy_mod_debugdump::print_schedule_graph(&mut app, PreUpdate);
         app.run();
     }
