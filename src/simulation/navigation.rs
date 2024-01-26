@@ -125,6 +125,13 @@ impl Flow {
         }
     }
 
+    pub fn is_diagonal(self) -> bool {
+        matches!(
+            self,
+            Self::NorthEast | Self::SouthEast | Self::SouthWest | Self::NorthWest
+        )
+    }
+
     const DIRECTIONALS: [Self; 8] = [
         Self::North,
         Self::East,
@@ -237,7 +244,7 @@ impl NavGridInner {
 
 /// Actually returns the "opposite" of the flow, this is used to find the neighbor
 #[inline]
-const fn neighbor_idx([x, y]: [usize; 2], flow: Flow) -> [usize; 2] {
+pub const fn neighbor_idx([x, y]: [usize; 2], flow: Flow) -> [usize; 2] {
     match flow {
         Flow::None | Flow::Source | Flow::LineOfSight(_) => {
             panic!("No neighbor for None, Source or LineOfSight")
