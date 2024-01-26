@@ -1,6 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use bevy::{app::AppExit, prelude::*, window::WindowResolution};
+use bevy::{
+    app::AppExit, core::FrameCount, prelude::*, time::TimePlugin, window::WindowResolution,
+};
 use framepace::{FramepacePlugin, FramepaceSettings, Limiter};
 use statistics::StatisticsPlugin;
 use visualization::VisualizationPlugin;
@@ -39,28 +41,22 @@ fn main() {
             .insert_resource(FramepaceSettings {
                 limiter: Limiter::from_framerate(FRAME_RATE as f64),
             })
-            .init_resource::<Ticks>()
-            .add_systems(PostUpdate, update_tick)
             .run();
     } else {
         let mut app = App::new();
-        app.add_plugins((MinimalPlugins, SimulationPlugin, StatisticsPlugin))
-            .init_resource::<Ticks>()
-            .add_systems(PostUpdate, (update_tick, exit_bench).chain());
+        app.add_plugins((
+            MinimalPlugins.build().disable::<TimePlugin>(),
+            SimulationPlugin,
+            StatisticsPlugin,
+        ))
+        .add_systems(First, exit_bench.chain());
         // bevy_mod_debugdump::print_schedule_graph(&mut app, PreUpdate);
         app.run();
     }
 }
 
-#[derive(Resource, Default)]
-pub struct Ticks(pub u32);
-
-fn update_tick(mut ticks: ResMut<Ticks>) {
-    ticks.0 += 1;
-}
-
-fn exit_bench(mut exit: ResMut<Events<AppExit>>, ticks: Res<Ticks>) {
-    if ticks.0 >= BENCHMARK_TICKS {
+fn exit_bench(mut exit: ResMut<Events<AppExit>>, frames: Res<FrameCount>) {
+    if frames.0 >= BENCHMARK_TICKS {
         exit.send(AppExit);
     }
 }

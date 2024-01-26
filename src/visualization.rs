@@ -2,6 +2,7 @@ use std::f32::consts::FRAC_PI_2;
 use std::time::Duration;
 
 use bevy::{
+    core::FrameCount,
     prelude::*,
     render::{camera::ScalingMode, mesh::Indices, render_resource::PrimitiveTopology},
     sprite::Mesh2dHandle,
@@ -17,7 +18,6 @@ use crate::{
     },
     statistics::Statistics,
     utils::{square, Easing, ToAngle, Vertices, WithOffset},
-    Ticks,
 };
 
 pub struct VisualizationPlugin;
@@ -293,7 +293,7 @@ fn avg20(v: &[Duration]) -> Duration {
 fn update_diagnostics_text(
     mut text_q: Query<&mut Text, With<StatsText>>,
     stats: Res<Statistics>,
-    tick: Res<Ticks>,
+    tick: Res<FrameCount>,
 ) {
     let mut text = text_q.single_mut();
 
