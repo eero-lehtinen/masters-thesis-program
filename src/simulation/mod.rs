@@ -23,23 +23,23 @@ impl Plugin for SimulationPlugin {
             // CollisionPlugin,
             LevelPlugin,
         ))
-        .edit_schedule(PreUpdate, |s| {
-            s.configure_sets(
-                (
-                    SimulationSet::Despawn,
-                    SimulationSet::Spawn,
-                    SimulationSet::Flush,
-                    SimulationSet::GenNavigation,
-                    SimulationSet::Move,
-                    SimulationSet::LocalAvoidance,
-                    SimulationSet::ApplyColliders,
-                )
-                    .chain(),
-            );
-        })
-        .edit_schedule(Startup, |s| {
-            s.configure_sets((SimulationStartupSet::Spawn, SimulationStartupSet::Flush).chain());
-        })
+        .configure_sets(
+            Startup,
+            (SimulationStartupSet::Spawn, SimulationStartupSet::Flush).chain(),
+        )
+        .configure_sets(
+            PreUpdate,
+            (
+                SimulationSet::Despawn,
+                SimulationSet::Spawn,
+                SimulationSet::Flush,
+                SimulationSet::GenNavigation,
+                SimulationSet::Move,
+                SimulationSet::LocalAvoidance,
+                SimulationSet::ApplyColliders,
+            )
+                .chain(),
+        )
         .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush))
         .add_systems(Startup, apply_deferred.in_set(SimulationStartupSet::Flush));
     }
