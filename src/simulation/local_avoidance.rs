@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::Instant};
+use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
@@ -27,11 +27,14 @@ fn init_spatial(mut spatial: ResMut<SpatialStructure>, level: Res<Level>) {
     *spatial = SpatialStructure::new(level.size);
 }
 
-pub fn make_spatial(
-    enemy_q: Query<(Entity, &Transform), With<Enemy>>,
-    mut spatial: ResMut<SpatialStructure>,
-    mut stats: ResMut<Statistics>,
-) {
+pub fn make_spatial(world: &mut World) {
+    let mut system_state: SystemState<(
+        Query<(Entity, &Transform), With<Enemy>>,
+        ResMut<SpatialStructure>,
+        ResMut<Statistics>,
+    )> = SystemState::new(world);
+    let (enemy_q, mut spatial, mut stats) = system_state.get_mut(world);
+
     let start = Instant::now();
     spatial.reset();
     let elapsed = start.elapsed();
@@ -48,13 +51,16 @@ pub fn make_spatial(
 const PREFERRED_DISTANCE: f32 = ENEMY_RADIUS * 1.5;
 const SAFETY_MARGIN: f32 = 0.0001;
 
-pub fn keep_distance_to_others(
-    mut enemy_q: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
-    nav_grid: Res<NavGrid>,
-    flow_field: Res<FlowField>,
-    spatial: Res<SpatialStructure>,
-    mut stats: ResMut<Statistics>,
-) {
+pub fn keep_distance_to_others(world: &mut World) {
+    let mut system_state: SystemState<(
+        Query<(&mut Transform, &mut Velocity), With<Enemy>>,
+        Res<NavGrid>,
+        Res<FlowField>,
+        Res<SpatialStructure>,
+        ResMut<Statistics>,
+    )> = SystemState::new(world);
+    let (mut enemy_q, nav_grid, flow_field, spatial, mut stats) = system_state.get_mut(world);
+
     let start = Instant::now();
 
     let pref_dist = PREFERRED_DISTANCE;

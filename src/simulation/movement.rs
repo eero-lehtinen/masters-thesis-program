@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::Instant};
+use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
@@ -18,12 +18,15 @@ impl Plugin for MovementPlugin {
 
 const ENEMY_SPEED: f32 = 6.;
 
-pub fn move_with_flow_field(
-    nav_grid: Res<NavGrid>,
-    flow_field: Res<FlowField>,
-    mut enemy_q: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
-    mut stats: ResMut<Statistics>,
-) {
+pub fn move_with_flow_field(world: &mut World) {
+    let mut system_state: SystemState<(
+        Query<(&mut Transform, &mut Velocity), With<Enemy>>,
+        Res<NavGrid>,
+        Res<FlowField>,
+        ResMut<Statistics>,
+    )> = SystemState::new(world);
+    let (mut enemy_q, nav_grid, flow_field, mut stats) = system_state.get_mut(world);
+
     let start = Instant::now();
     enemy_q
         .iter_mut()

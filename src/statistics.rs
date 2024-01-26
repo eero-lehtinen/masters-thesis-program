@@ -47,7 +47,7 @@ pub fn as_ms(d: Duration) -> String {
     format!("{:.5} ms", d.as_secs_f64() * 1000.)
 }
 
-fn print_stats(stats: Res<Statistics>, ) {
+fn print_stats(stats: Res<Statistics>) {
     for k in stats.0.keys().sorted() {
         let v = &stats.0[k];
         println!(

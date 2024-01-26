@@ -475,12 +475,15 @@ fn inflate_polygon(vertices: &Vertices, amount: f32) -> Option<Vertices> {
         .into()
 }
 
-fn generate_flow_field_system(
-    nav_grid: Res<NavGrid>,
-    mut flow_field: ResMut<FlowField>,
-    target_q: Query<&Transform, With<Target>>,
-    mut stats: ResMut<Statistics>,
-) {
+fn generate_flow_field_system(world: &mut World) {
+    let mut system_state: SystemState<(
+        Res<NavGrid>,
+        ResMut<FlowField>,
+        Query<&Transform, With<Target>>,
+        ResMut<Statistics>,
+    )> = SystemState::new(world);
+    let (nav_grid, mut flow_field, target_q, mut stats) = system_state.get_mut(world);
+
     // When the last player dies, just continue going towards the latest corpse
     let targets = target_q
         .iter()
