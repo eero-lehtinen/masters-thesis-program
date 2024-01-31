@@ -34,8 +34,8 @@ impl Plugin for SimulationPlugin {
                 SimulationSet::Spawn,
                 SimulationSet::Flush,
                 SimulationSet::GenNavigation,
-                SimulationSet::Move,
                 SimulationSet::LocalAvoidance,
+                SimulationSet::Move,
                 SimulationSet::ApplyColliders,
             )
                 .chain(),
@@ -47,11 +47,11 @@ impl Plugin for SimulationPlugin {
 
 #[derive(SystemSet, Hash, PartialEq, Eq, Clone, Debug)]
 pub enum SimulationSet {
+    Despawn,
     Spawn,
     Flush,
     GenNavigation,
     Move,
-    Despawn,
     LocalAvoidance,
     ApplyColliders,
 }

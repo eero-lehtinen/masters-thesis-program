@@ -19,7 +19,7 @@ use super::{
 };
 
 pub const NAV_SCALE: f32 = ENEMY_RADIUS;
-const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
+pub const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
 
 pub struct NavigationPlugin;
 

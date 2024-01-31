@@ -4,7 +4,12 @@ use std::time::Duration;
 use bevy::{
     core::FrameCount,
     prelude::*,
-    render::{camera::ScalingMode, mesh::Indices, render_resource::PrimitiveTopology},
+    render::{
+        camera::ScalingMode,
+        mesh::Indices,
+        render_resource::{Extent3d, PrimitiveTopology, TextureDimension, TextureFormat},
+        texture::ImageSampler,
+    },
     sprite::Mesh2dHandle,
 };
 use bevy_pancam::{PanCam, PanCamPlugin};
@@ -13,11 +18,11 @@ use itertools::Itertools;
 use crate::{
     simulation::{
         level::{Enemy, Level, SpawnPoint, Target, Wall, ENEMY_RADIUS},
-        navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE},
+        navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE, NAV_SCALE_INV},
         SimulationStartupSet,
     },
     statistics::Statistics,
-    utils::{square, Easing, ToAngle, Vertices, WithOffset},
+    utils::{square, ToAngle, Vertices, WithOffset},
 };
 
 pub struct VisualizationPlugin;
@@ -30,12 +35,17 @@ impl Plugin for VisualizationPlugin {
                 ..default()
             })
             .insert_resource(ClearColor(Color::rgb_u8(222, 220, 227)))
-            .insert_resource(ShowFlowField(true))
+            .insert_resource(ShowFlowFieldLines(false))
             .add_systems(
                 Startup,
                 (
                     (spawn_camera, init_diagnostics_text),
-                    (add_wall_meshes, add_target_sprites, add_spawn_point_sprites)
+                    (
+                        add_wall_meshes,
+                        add_target_sprites,
+                        add_spawn_point_sprites,
+                        add_flow_field_sprite,
+                    )
                         .after(SimulationStartupSet::Flush),
                 ),
             )
@@ -45,7 +55,9 @@ impl Plugin for VisualizationPlugin {
                     add_enemy_sprites,
                     draw_level_bounds,
                     toggle_show_flow_field,
-                    draw_flow_field.run_if(resource_equals(ShowFlowField(true))),
+                    draw_flow_field_grid,
+                    update_flow_field_color,
+                    draw_flow_field_gizmos.run_if(resource_equals(ShowFlowFieldLines(true))),
                     update_diagnostics_text,
                 ),
             );
@@ -53,7 +65,7 @@ impl Plugin for VisualizationPlugin {
 }
 
 #[derive(Resource, PartialEq, Eq)]
-struct ShowFlowField(bool);
+struct ShowFlowFieldLines(bool);
 
 fn spawn_camera(mut commands: Commands, level: Res<Level>) {
     commands.spawn((
@@ -77,7 +89,7 @@ fn add_enemy_sprites(
     for entity in new_enemy_q.iter() {
         commands.entity(entity).insert((
             Sprite {
-                color: Color::rgb_u8(224, 49, 29).with_a(0.4),
+                color: Color::rgb_u8(55, 41, 255).with_a(0.6),
                 custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
                 ..default()
             },
@@ -155,7 +167,7 @@ fn add_wall_meshes(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut commands: Commands,
 ) {
-    let material = materials.add(ColorMaterial::from(Color::BLACK.with_a(0.8)));
+    let material = materials.add(ColorMaterial::from(Color::GRAY.with_a(0.4)));
     for (entity, wall) in new_wall_q.iter() {
         commands.entity(entity).insert((
             Mesh2dHandle(meshes.add(make_triangulated_mesh(&wall.0).unwrap())),
@@ -185,14 +197,111 @@ pub fn draw_gizmo_cross(gizmos: &mut Gizmos, pos: Vec2, color: Color, size: f32)
     );
 }
 
-fn toggle_show_flow_field(input: Res<Input<KeyCode>>, mut show_flow_field: ResMut<ShowFlowField>) {
+fn toggle_show_flow_field(
+    input: Res<Input<KeyCode>>,
+    mut show_flow_field: ResMut<ShowFlowFieldLines>,
+) {
     if input.just_pressed(KeyCode::F) {
         info!("Toggling flow field");
         show_flow_field.0 = !show_flow_field.0;
     }
 }
 
-fn draw_flow_field(
+#[derive(Component)]
+struct FlowFieldSprite;
+
+fn add_flow_field_sprite(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    nav_grid: Res<NavGrid>,
+    level: Res<Level>,
+) {
+    let mut image = Image::new_fill(
+        Extent3d {
+            width: nav_grid.0.grid.dim().0 as u32,
+            height: nav_grid.0.grid.dim().1 as u32,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &[255, 255, 255, 255],
+        TextureFormat::Rgba8Unorm,
+    );
+    image.sampler = ImageSampler::nearest();
+    let handle = images.add(image);
+
+    let size = level.size + 2. * NAV_SCALE;
+
+    commands.spawn((
+        FlowFieldSprite,
+        SpriteBundle {
+            texture: handle,
+            sprite: Sprite {
+                custom_size: Some(Vec2::splat(size)),
+                ..default()
+            },
+            transform: Transform::from_xyz(size / 2. - NAV_SCALE, size / 2. - NAV_SCALE, 0.),
+            ..default()
+        },
+    ));
+}
+
+fn draw_flow_field_grid(flow_field: Res<FlowField>, mut gizmos: Gizmos) {
+    let (width, height) = flow_field.0.dim();
+    // Draw grid lines
+    for x in 0..width {
+        let pos = Vec2::new((x as f32 - 1.) * NAV_SCALE, -NAV_SCALE);
+        let end_pos = Vec2::new(
+            (x as f32 - 1.) * NAV_SCALE,
+            (height as f32 - 1.) * NAV_SCALE,
+        );
+        gizmos.line_2d(pos, end_pos, Color::BLACK.with_a(0.2));
+    }
+    for y in 0..height {
+        let pos = Vec2::new(-NAV_SCALE, (y as f32 - 1.) * NAV_SCALE);
+        let end_pos = Vec2::new((width as f32 - 1.) * NAV_SCALE, (y as f32 - 1.) * NAV_SCALE);
+        gizmos.line_2d(pos, end_pos, Color::BLACK.with_a(0.2));
+    }
+}
+
+fn update_flow_field_color(
+    flow_field: Res<FlowField>,
+    sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
+    mut images: ResMut<Assets<Image>>,
+    level: Res<Level>,
+) {
+    let (width, _) = flow_field.0.dim();
+
+    let image_handle = sprite_q.single();
+    let image = images.get_mut(image_handle).unwrap();
+    let mut change_pixel = move |x, y, color: [u8; 4]| {
+        let y = image.height() as usize - y - 1;
+        let pixel = &mut image.data[(x + y * width) * 4..(x + y * width) * 4 + 4];
+        pixel.copy_from_slice(&color);
+    };
+
+    let max_dist = level.size * NAV_SCALE_INV * 2.0f32.sqrt();
+
+    flow_field
+        .0
+        .indexed_iter()
+        .for_each(|((x, y), &(dist, flow))| {
+            if flow == Flow::None {
+                change_pixel(x, y, [0, 0, 0, 255]);
+                return;
+            }
+
+            if flow == Flow::Source {
+                change_pixel(x, y, [0, 255, 0, 255]);
+                return;
+            }
+
+            let dist = dist.min(max_dist) / max_dist;
+            let color = Color::hsla((1. - dist) * 120., 1., 0.5, 1.);
+            change_pixel(x, y, color.as_rgba_u8());
+        });
+}
+
+fn draw_flow_field_gizmos(
     flow_field: Res<FlowField>,
     nav_grid: Res<NavGrid>,
     mut gizmos: Gizmos,
@@ -206,49 +315,33 @@ fn draw_flow_field(
 
     let extent = 140;
 
-    let range_x = cx.saturating_sub(extent)..(cx + extent).min(flow_field.0.shape()[0]);
-    let range_y = cy.saturating_sub(extent)..(cy + extent).min(flow_field.0.shape()[1]);
+    let (width, height) = flow_field.0.dim();
 
-    // Draw grid lines
-    for x in range_x.clone() {
-        let pos = NavGridInner::index_to_pos([x, range_y.start]) + Vec2::splat(NAV_SCALE * 0.5);
-        let end_pos =
-            NavGridInner::index_to_pos([x, range_y.end - 1]) + Vec2::splat(NAV_SCALE * 0.5);
-        gizmos.line_2d(pos, end_pos, Color::BLACK.with_a(0.2));
-    }
-    for y in range_y.clone() {
-        let pos = NavGridInner::index_to_pos([range_x.start, y]) + Vec2::splat(NAV_SCALE * 0.5);
-        let end_pos =
-            NavGridInner::index_to_pos([range_x.end - 1, y]) + Vec2::splat(NAV_SCALE * 0.5);
-        gizmos.line_2d(pos, end_pos, Color::BLACK.with_a(0.2));
-    }
+    let range_x = cx.saturating_sub(extent)..(cx + extent).min(width);
+    let range_y = cy.saturating_sub(extent)..(cy + extent).min(height);
 
     // Draw flow field
     for x in range_x.clone() {
         for y in range_y.clone() {
-            let (dist, flow) = flow_field.0[[x, y]];
+            let (_, flow) = flow_field.0[[x, y]];
             let pos = NavGridInner::index_to_pos([x, y]);
             if flow == Flow::None {
                 gizmos.line_2d(
-                    pos - Vec2::new(0.0, 0.2),
-                    pos + Vec2::new(0.0, 0.2),
+                    pos - Vec2::new(0.0, 0.1),
+                    pos + Vec2::new(0.0, 0.1),
                     Color::RED,
                 );
                 continue;
             }
 
             if flow == Flow::Source {
-                draw_gizmo_cross(&mut gizmos, pos, Color::GREEN, NAV_SCALE);
+                draw_gizmo_cross(&mut gizmos, pos, Color::BLACK, NAV_SCALE);
                 continue;
             }
 
             let angle = flow.to_dir().to_angle().rem_euclid(FRAC_PI_2);
             let dir = flow.to_dir() * (1. / angle.cos().max(angle.sin())) * 0.5 * NAV_SCALE;
-            gizmos.line_2d(
-                pos - dir,
-                pos + dir,
-                Color::SEA_GREEN.lerp(Color::BLACK, dist / 100.),
-            );
+            gizmos.line_2d(pos - dir, pos + dir, Color::BLACK);
         }
     }
 }

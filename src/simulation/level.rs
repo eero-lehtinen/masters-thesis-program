@@ -105,12 +105,12 @@ fn spawn_level(level: Res<Level>, mut commands: Commands) {
         commands.spawn((
             Wall(local_vertices.clone()),
             polyline_collider(local_vertices),
-            spatial(center, 0.),
+            spatial(center, 1.),
         ));
     }
     commands.spawn((
         polyline_collider(rectangle(Vec2::splat(level.size))),
-        spatial(Vec2::splat(level.size / 2.), 0.),
+        spatial(Vec2::splat(level.size / 2.), 1.),
     ));
 }
 
