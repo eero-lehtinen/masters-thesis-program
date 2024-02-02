@@ -73,16 +73,7 @@ fn write_statistics(stats: Res<Statistics>) {
     )
     .unwrap();
 
-    for k in stats.0.keys().sorted() {
-        let v = &stats.0[k];
-        println!(
-            "{:16 }: avg {: <10}, mean {: <10}, std {: <10}",
-            k,
-            as_ms(avg(v)),
-            as_ms(mean(v)),
-            as_ms(std(v))
-        );
-    }
+    print_stats(stats);
 
     plot_stats(stats_f64).unwrap();
 }
