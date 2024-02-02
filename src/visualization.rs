@@ -387,9 +387,9 @@ fn init_diagnostics_text(mut commands: Commands, asset_server: Res<AssetServer>)
         });
 }
 
-fn avg20(v: &[Duration]) -> Duration {
-    let sum = v.iter().rev().take(20).sum::<Duration>();
-    sum / v.len() as u32
+fn avg_last_n(v: &[Duration], n: u32) -> Duration {
+    let sum = v.iter().rev().take(n as usize).sum::<Duration>();
+    sum / n
 }
 
 fn update_diagnostics_text(
@@ -399,11 +399,27 @@ fn update_diagnostics_text(
 ) {
     let mut text = text_q.single_mut();
 
-    text.sections[0].value = format!("tick: {}\n", tick.0)
-        + &stats
-            .0
-            .iter()
-            .map(|(k, v)| format!("{k:14 }: {:?}", avg20(v)))
-            .sorted()
-            .join("\n");
+    let avgs = stats
+        .0
+        .iter()
+        .sorted()
+        .map(|(k, v)| (k, avg_last_n(v, 20)))
+        .collect_vec();
+
+    let total = avgs.iter().map(|(_, v)| v).sum::<Duration>();
+
+    let mut value = format!("tick: {}\n", tick.0);
+
+    value += &avgs
+        .iter()
+        .map(|(k, v)| format!("{k:14 }: {:?}", v))
+        .join("\n");
+
+    value += &format!(
+        "\ntotal: {:.2} ms, fps: {:.1}",
+        total.as_secs_f64() * 1000.,
+        1. / total.as_secs_f64()
+    );
+
+    text.sections[0].value = value;
 }
