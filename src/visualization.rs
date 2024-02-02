@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::PI;
 use std::time::Duration;
 
 use bevy::{
@@ -22,7 +22,7 @@ use crate::{
         SimulationStartupSet,
     },
     statistics::Statistics,
-    utils::{square, ToAngle, Vertices, WithOffset},
+    utils::{square, Vertices, WithOffset},
 };
 
 pub struct VisualizationPlugin;
@@ -339,11 +339,20 @@ fn draw_flow_field_gizmos(
                 continue;
             }
 
-            let angle = flow.to_dir().to_angle().rem_euclid(FRAC_PI_2);
-            let dir = flow.to_dir() * (1. / angle.cos().max(angle.sin())) * 0.5 * NAV_SCALE;
-            gizmos.line_2d(pos - dir, pos + dir, Color::BLACK);
+            let dir = flow.to_dir() * 0.45 * NAV_SCALE;
+            gizmo_arrow(&mut gizmos, pos - dir, pos + dir, Color::BLACK);
         }
     }
+}
+
+fn gizmo_arrow(gizmos: &mut Gizmos, from: Vec2, to: Vec2, color: Color) {
+    gizmos.line_2d(from, to, color);
+    let dir = (to - from).normalize();
+    let arrow_head = dir * 0.16;
+    let arrow = Vec2::from_angle(-PI / 5.).rotate(arrow_head);
+    gizmos.line_2d(to, to - arrow, color);
+    let arrow = Vec2::from_angle(PI / 5.).rotate(arrow_head);
+    gizmos.line_2d(to, to - arrow, color);
 }
 
 #[derive(Component)]
