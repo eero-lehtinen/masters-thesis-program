@@ -19,11 +19,11 @@ pub fn is_exiting(mut exit: EventReader<AppExit>) -> bool {
     exit.read().next().is_some()
 }
 
-pub fn avg(a: &[Duration]) -> Duration {
+pub fn mean(a: &[Duration]) -> Duration {
     a.iter().sum::<Duration>() / a.len() as u32
 }
 
-pub fn mean(a: &[Duration]) -> Duration {
+pub fn median(a: &[Duration]) -> Duration {
     let mut a = a.to_vec();
     a.sort();
     if a.len() % 2 == 0 {
@@ -51,10 +51,10 @@ fn print_stats(stats: Res<Statistics>) {
     for k in stats.0.keys().sorted() {
         let v = &stats.0[k];
         println!(
-            "{:16 }: avg {: <10}, mean {: <10}, std {: <10}",
+            "{:16 }: avg {: <11}, median {: <11}, std {: <11}",
             k,
-            as_ms(avg(v)),
             as_ms(mean(v)),
+            as_ms(median(v)),
             as_ms(std(v))
         );
     }
