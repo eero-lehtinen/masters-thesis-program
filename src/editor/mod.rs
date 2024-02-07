@@ -2,6 +2,7 @@
 
 use std::f32::consts::TAU;
 use std::fmt::Write;
+use std::fs::File;
 
 use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::ecs::system::SystemState;
@@ -1235,8 +1236,8 @@ pub fn save_level(world: &mut World, name: &str) -> anyhow::Result<()> {
         walls,
     };
 
-    let data = rmp_serde::to_vec(&level)?;
-    std::fs::write(name, data)?;
+    let mut file = File::create(name)?;
+    rmp_serde::encode::write_named(&mut file, &level)?;
     Ok(())
 }
 
