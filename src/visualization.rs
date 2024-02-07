@@ -16,14 +16,15 @@ use bevy_pancam::{PanCam, PanCamPlugin};
 use itertools::Itertools;
 
 use crate::{
-    simulation::{
-        level::{Enemy, Level, SpawnPoint, Target, Wall, ENEMY_RADIUS},
-        navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE, NAV_SCALE_INV},
-        SimulationStartupSet,
-    },
+    simulation::navigation::{Flow, FlowField, NavGrid, NavGridInner, NAV_SCALE, NAV_SCALE_INV},
     statistics::Statistics,
     utils::{square, Vertices, WithOffset},
+    Command,
 };
+
+use crate::simulation::spawning::{Enemy, ENEMY_RADIUS};
+
+use crate::level::*;
 
 pub struct VisualizationPlugin;
 
@@ -34,28 +35,24 @@ impl Plugin for VisualizationPlugin {
                 line_width: 2.0,
                 ..default()
             })
-            .insert_resource(ClearColor(Color::rgb_u8(222, 220, 227)))
+            .insert_resource(ClearColor(Color::hex("#303030").unwrap()))
             .insert_resource(ShowFlowFieldLines(false))
             .add_systems(
                 Startup,
                 (
                     (spawn_camera, init_diagnostics_text),
-                    (
-                        add_wall_meshes,
-                        add_target_sprites,
-                        add_spawn_point_sprites,
-                        add_flow_field_sprite,
-                    )
-                        .after(SimulationStartupSet::Flush),
+                    (add_wall_meshes, add_flow_field_sprite),
                 ),
             )
             .add_systems(
                 Update,
                 (
+                    add_target_sprites,
+                    add_spawn_point_sprites,
                     add_enemy_sprites,
                     draw_level_bounds,
                     toggle_show_flow_field,
-                    draw_flow_field_grid,
+                    dran_nav_grid,
                     update_flow_field_color,
                     draw_flow_field_gizmos.run_if(resource_equals(ShowFlowFieldLines(true))),
                     update_diagnostics_text,
@@ -77,7 +74,10 @@ fn spawn_camera(mut commands: Commands, level: Res<Level>) {
             },
             ..default()
         },
-        PanCam::default(),
+        PanCam {
+            grab_buttons: vec![MouseButton::Right, MouseButton::Middle],
+            ..default()
+        },
     ));
 }
 
@@ -106,7 +106,7 @@ fn add_target_sprites(
     for entity in new_target_q.iter() {
         commands.entity(entity).insert((
             Sprite {
-                color: Color::rgb_u8(31, 39, 240).with_a(0.8),
+                color: Color::hex("#3A90E0").unwrap().with_a(0.8),
                 custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
                 ..default()
             },
@@ -123,7 +123,7 @@ fn add_spawn_point_sprites(
     for entity in new_spawn_point_q.iter() {
         commands.entity(entity).insert((
             Sprite {
-                color: Color::rgb_u8(136, 2, 214).with_a(0.8),
+                color: Color::hex("#8E2CD8").unwrap().with_a(0.8),
                 custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
                 ..default()
             },
@@ -166,7 +166,11 @@ fn add_wall_meshes(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut commands: Commands,
+    command: Res<Command>,
 ) {
+    if *command == Command::Editor {
+        return;
+    }
     let material = materials.add(ColorMaterial::from(Color::GRAY.with_a(0.4)));
     for (entity, wall) in new_wall_q.iter() {
         commands.entity(entity).insert((
@@ -176,8 +180,8 @@ fn add_wall_meshes(
     }
 }
 
-fn draw_level_bounds(mut gizmos: Gizmos, level: Res<Level>) {
-    let bounds = square(level.size).with_offset(Vec2::splat(level.size / 2.));
+fn draw_level_bounds(mut gizmos: Gizmos, level_size: Res<LevelSize>) {
+    let bounds = square(level_size.0).with_offset(Vec2::splat(level_size.0 / 2.));
     for (p1, p2) in bounds.iter().zip(bounds.iter().cycle().skip(1)) {
         gizmos.line_2d(*p1, *p2, Color::BLACK);
     }
@@ -200,7 +204,11 @@ pub fn draw_gizmo_cross(gizmos: &mut Gizmos, pos: Vec2, color: Color, size: f32)
 fn toggle_show_flow_field(
     input: Res<Input<KeyCode>>,
     mut show_flow_field: ResMut<ShowFlowFieldLines>,
+    flow_field: Option<Res<FlowField>>,
 ) {
+    if flow_field.is_none() {
+        return;
+    }
     if input.just_pressed(KeyCode::F) {
         info!("Toggling flow field");
         show_flow_field.0 = !show_flow_field.0;
@@ -213,9 +221,12 @@ struct FlowFieldSprite;
 fn add_flow_field_sprite(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
-    nav_grid: Res<NavGrid>,
+    nav_grid: Option<Res<NavGrid>>,
     level: Res<Level>,
 ) {
+    let Some(nav_grid) = nav_grid else {
+        return;
+    };
     let mut image = Image::new_fill(
         Extent3d {
             width: nav_grid.0.grid.dim().0 as u32,
@@ -245,8 +256,9 @@ fn add_flow_field_sprite(
     ));
 }
 
-fn draw_flow_field_grid(flow_field: Res<FlowField>, mut gizmos: Gizmos) {
-    let (width, height) = flow_field.0.dim();
+fn dran_nav_grid(level_size: Res<LevelSize>, mut gizmos: Gizmos) {
+    let width = (level_size.0 * NAV_SCALE_INV) as i32 + 2;
+    let height = width;
     // Draw grid lines
     for x in 0..width {
         let pos = Vec2::new((x as f32 - 1.) * NAV_SCALE, -NAV_SCALE);
@@ -264,11 +276,15 @@ fn draw_flow_field_grid(flow_field: Res<FlowField>, mut gizmos: Gizmos) {
 }
 
 fn update_flow_field_color(
-    flow_field: Res<FlowField>,
+    flow_field: Option<Res<FlowField>>,
     sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
     mut images: ResMut<Assets<Image>>,
     level: Res<Level>,
 ) {
+    let Some(flow_field) = flow_field else {
+        return;
+    };
+
     let (width, _) = flow_field.0.dim();
 
     let image_handle = sprite_q.single();
@@ -394,9 +410,12 @@ fn avg_last_n(v: &[Duration], n: u32) -> Duration {
 
 fn update_diagnostics_text(
     mut text_q: Query<&mut Text, With<StatsText>>,
-    stats: Res<Statistics>,
+    stats: Option<Res<Statistics>>,
     tick: Res<FrameCount>,
 ) {
+    let Some(stats) = stats else {
+        return;
+    };
     let mut text = text_q.single_mut();
 
     let avgs = stats

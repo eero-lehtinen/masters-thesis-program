@@ -3,10 +3,12 @@ use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use super::{
-    level::{Enemy, Level, ENEMY_RADIUS},
     navigation::{Flow, FlowField, NavGrid},
+    spawning::{Enemy, ENEMY_RADIUS},
     SimulationSet,
 };
+
+use crate::level::*;
 
 pub struct LocalAvoidancePlugin;
 

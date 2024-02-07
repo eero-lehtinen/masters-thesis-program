@@ -47,6 +47,13 @@ pub fn rectangle(size: Vec2) -> Vertices {
     ]
 }
 
+pub fn spatial(pos: Vec2, z: f32) -> SpatialBundle {
+    SpatialBundle {
+        transform: Transform::from_translation(pos.extend(z)),
+        ..default()
+    }
+}
+
 pub trait WithOffset {
     fn with_offset(self, offset: Vec2) -> Self;
 }

@@ -1,16 +1,16 @@
 use bevy::prelude::*;
 
 use self::{
-    level::LevelPlugin, local_avoidance::LocalAvoidancePlugin, movement::MovementPlugin,
-    navigation::NavigationPlugin,
+    local_avoidance::LocalAvoidancePlugin, movement::MovementPlugin, navigation::NavigationPlugin,
+    spawning::SpawningPlugin,
 };
 
 mod collision;
-pub mod level;
 mod local_avoidance;
 mod movement;
 pub mod navigation;
 mod rng;
+pub mod spawning;
 
 pub struct SimulationPlugin;
 
@@ -20,13 +20,9 @@ impl Plugin for SimulationPlugin {
             NavigationPlugin,
             MovementPlugin,
             LocalAvoidancePlugin,
+            SpawningPlugin,
             // CollisionPlugin,
-            LevelPlugin,
         ))
-        .configure_sets(
-            Startup,
-            (SimulationStartupSet::Spawn, SimulationStartupSet::Flush).chain(),
-        )
         .configure_sets(
             PreUpdate,
             (
@@ -40,8 +36,7 @@ impl Plugin for SimulationPlugin {
             )
                 .chain(),
         )
-        .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush))
-        .add_systems(Startup, apply_deferred.in_set(SimulationStartupSet::Flush));
+        .add_systems(PreUpdate, apply_deferred.in_set(SimulationSet::Flush));
     }
 }
 
@@ -54,10 +49,4 @@ pub enum SimulationSet {
     Move,
     LocalAvoidance,
     ApplyColliders,
-}
-
-#[derive(SystemSet, Hash, PartialEq, Eq, Clone, Debug)]
-pub enum SimulationStartupSet {
-    Spawn,
-    Flush,
 }

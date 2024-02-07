@@ -1,4 +1,5 @@
 use crate::{
+    level::{Level, LevelStartupSet, Target},
     statistics::Statistics,
     utils::{ToUsizeArr, ToVec2, Vertices},
 };
@@ -13,10 +14,7 @@ use ndarray::Array2;
 use offset_polygon::offset_polygon;
 use std::{collections::VecDeque, f32::consts::SQRT_2, iter, sync::Arc, time::Duration};
 
-use super::{
-    level::{Level, Target, ENEMY_RADIUS},
-    SimulationSet, SimulationStartupSet,
-};
+use super::{spawning::ENEMY_RADIUS, SimulationSet};
 
 pub const NAV_SCALE: f32 = ENEMY_RADIUS;
 pub const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
@@ -26,7 +24,7 @@ pub struct NavigationPlugin;
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FlowField>()
-            .add_systems(Startup, init_nav_grid.in_set(SimulationStartupSet::Spawn))
+            .add_systems(PreStartup, init_nav_grid.after(LevelStartupSet::Spawn))
             .add_systems(
                 PreUpdate,
                 generate_flow_field_system.in_set(SimulationSet::GenNavigation),
@@ -63,7 +61,7 @@ pub enum Flow {
     None,
     Source,
     /// Contains direction to move in
-    LineOfSight(Vec2),
+    LineOfSight(Vec2), // TODO: Test with only f32 (or u8) as angle to reduce memory usage (and increase cache locality)
     North,
     East,
     South,

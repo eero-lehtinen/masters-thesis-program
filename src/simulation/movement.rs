@@ -3,8 +3,8 @@ use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use super::{
-    level::Enemy,
     navigation::{Flow, FlowField, NavGrid, NavGridInner},
+    spawning::Enemy,
     SimulationSet,
 };
 
