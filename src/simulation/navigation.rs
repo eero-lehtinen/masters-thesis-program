@@ -193,9 +193,7 @@ impl NavGridInner {
     }
 
     pub fn pos_to_index(&self, pos: Vec2) -> [usize; 2] {
-        let pos = (pos * NAV_SCALE_INV + Vec2::ONE)
-            .clamp(Vec2::ONE, Vec2::splat((self.walkable.dim().0 - 2) as f32))
-            .floor();
+        let pos = (pos * NAV_SCALE_INV + Vec2::ONE).floor();
         [pos.x as usize, pos.y as usize]
     }
 
