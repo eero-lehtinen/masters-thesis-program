@@ -28,10 +28,10 @@ pub mod visualization;
 const FRAME_RATE: i32 = 60;
 const DELTA_TIME: f32 = 1.0 / FRAME_RATE as f32;
 
-const BENCHMARK_TICKS: u32 = 1000;
-
 #[derive(Parser)]
 struct Cli {
+    /// Path to the level file to load.
+    #[clap(short, long)]
     level: Option<String>,
 
     #[clap(subcommand)]
@@ -42,7 +42,10 @@ struct Cli {
 enum Command {
     Viewer,
     Editor,
-    Bench,
+    Bench {
+        #[clap(short, long, default_value = "1000")]
+        ticks: u32,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -53,26 +56,30 @@ fn main() -> anyhow::Result<()> {
     let command = cli.command.unwrap_or(Command::Viewer);
     app.insert_resource(command);
 
-    if command == Command::Bench {
-        app.add_plugins((MinimalPlugins.build().disable::<TimePlugin>(),))
-            .add_systems(First, exit_bench);
-    } else {
-        app.add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    resolution: WindowResolution::new(700., 700.),
-                    present_mode: if command == Command::Editor {
-                        bevy::window::PresentMode::AutoVsync
-                    } else {
-                        bevy::window::PresentMode::AutoNoVsync
-                    },
+    match command {
+        Command::Bench { ticks } => {
+            app.add_plugins(MinimalPlugins.build().disable::<TimePlugin>())
+                .insert_resource(BenchTicks(ticks))
+                .add_systems(First, exit_bench);
+        }
+        _ => {
+            app.add_plugins((
+                DefaultPlugins.set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: WindowResolution::new(700., 700.),
+                        present_mode: if command == Command::Editor {
+                            bevy::window::PresentMode::AutoVsync
+                        } else {
+                            bevy::window::PresentMode::AutoNoVsync
+                        },
+                        ..default()
+                    }),
                     ..default()
                 }),
-                ..default()
-            }),
-            VisualizationPlugin,
-            FramepacePlugin,
-        ));
+                VisualizationPlugin,
+                FramepacePlugin,
+            ));
+        }
     }
 
     if command == Command::Viewer {
@@ -83,7 +90,9 @@ fn main() -> anyhow::Result<()> {
 
     if command == Command::Editor {
         app.add_plugins(EditorPlugin);
-    } else {
+    }
+
+    if command != Command::Editor {
         app.add_plugins((SimulationPlugin, StatisticsPlugin));
     }
 
@@ -102,8 +111,11 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn exit_bench(mut exit: ResMut<Events<AppExit>>, frames: Res<FrameCount>) {
-    if frames.0 >= BENCHMARK_TICKS {
+#[derive(Resource)]
+struct BenchTicks(u32);
+
+fn exit_bench(mut exit: ResMut<Events<AppExit>>, frames: Res<FrameCount>, ticks: Res<BenchTicks>) {
+    if frames.0 >= ticks.0 {
         exit.send(AppExit);
     }
 }
