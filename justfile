@@ -18,8 +18,8 @@ fmt:
 	cargo fmt
 
 lint:
-	cargo clippy --target-dir target/rust-analyzer
+	cargo clippy
 
 lint-fix:
-	cargo clippy --target-dir target/rust-analyzer --fix --allow-dirty --allow-staged
+	cargo clippy  --fix --allow-dirty --allow-staged
 
