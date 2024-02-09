@@ -34,6 +34,10 @@ struct Cli {
     #[clap(short, long)]
     level: Option<String>,
 
+    /// How large to scale the level.
+    #[clap(short = 's', long)]
+    level_size: Option<f32>,
+
     #[clap(subcommand)]
     command: Option<Command>,
 }
@@ -49,6 +53,8 @@ enum Command {
 }
 
 fn main() -> anyhow::Result<()> {
+    std::env::set_var("RUST_BACKTRACE", "1");
+
     let cli = Cli::parse();
 
     let mut app = App::new();
@@ -99,7 +105,11 @@ fn main() -> anyhow::Result<()> {
     app.add_plugins(LevelPlugin);
     if let Some(level_path) = cli.level {
         let file = File::open(&level_path)?;
-        let level: Level = rmp_serde::from_read(file)?;
+        let mut level: Level = rmp_serde::from_read(file)?;
+
+        if let Some(level_size) = cli.level_size {
+            level.scale_to(level_size);
+        }
         app.insert_resource(level)
             .insert_resource(LevelPath(level_path));
     } else {

@@ -50,6 +50,18 @@ impl Default for Level {
     }
 }
 
+impl Level {
+    pub fn scale_to(&mut self, size: f32) {
+        let scale = size / self.size;
+        self.size = size;
+        self.spawn_points.iter_mut().for_each(|p| *p *= scale);
+        self.targets.iter_mut().for_each(|p| *p *= scale);
+        self.walls
+            .iter_mut()
+            .for_each(|v| v.iter_mut().for_each(|p| *p *= scale));
+    }
+}
+
 #[derive(Component, Debug)]
 pub struct SpawnPoint;
 
