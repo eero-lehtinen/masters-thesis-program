@@ -515,11 +515,11 @@ fn start_flow_field_generation_task(
     mut gen: ResMut<FlowFieldGenerate>,
     target_q: Query<&Transform, With<Target>>,
     time: Res<Time<Virtual>>,
-    mut stats: ResMut<Statistics>,
+    // mut stats: ResMut<Statistics>,
 ) {
-    let start = Instant::now();
+    // let start = Instant::now();
     if gen.task.is_some() || time.elapsed() - gen.last_started < MIN_NAV_GEN_INTERVAL {
-        stats.add("flow_field", start.elapsed());
+        // stats.add("flow_field", start.elapsed());
         return;
     }
     // When the last player dies, just continue going towards the latest corpse
@@ -535,7 +535,7 @@ fn start_flow_field_generation_task(
 
     gen.task = Some(task);
     gen.last_started = time.elapsed();
-    stats.add("flow_field", start.elapsed());
+    // stats.add("flow_field", start.elapsed());
 }
 
 fn handle_flow_field_task(
@@ -543,13 +543,14 @@ fn handle_flow_field_task(
     mut flow_field: ResMut<FlowField>,
     mut stats: ResMut<Statistics>,
 ) {
-    let start = Instant::now();
+    // let start = Instant::now();
     if let Some(task) = gen.task.as_mut() {
-        if let Some((_, flow_field_res)) = future::block_on(future::poll_once(task)) {
+        if let Some((duration, flow_field_res)) = future::block_on(future::poll_once(task)) {
             flow_field.0 = flow_field_res;
             gen.task = None;
+            stats.add("flow_field_task", duration);
         }
     }
 
-    *stats.last_mut("flow_field").unwrap() += start.elapsed();
+    // *stats.last_mut("flow_field").unwrap() += start.elapsed();
 }
