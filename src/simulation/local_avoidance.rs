@@ -42,12 +42,8 @@ pub fn make_spatial(world: &mut World) {
     let elapsed = start.elapsed();
     enemy_q.for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
     let elapsed2 = start.elapsed();
-    stats.0.entry("spatial_reset").or_default().push(elapsed);
-    stats
-        .0
-        .entry("spatial_gen")
-        .or_default()
-        .push(elapsed2 - elapsed);
+    stats.add("spatial_reset", elapsed);
+    stats.add("spatial_gen", elapsed2 - elapsed);
 }
 
 const PREFERRED_DISTANCE: f32 = ENEMY_RADIUS * 1.5;
@@ -110,11 +106,7 @@ pub fn keep_distance_to_others(world: &mut World) {
                 }
             }
         });
-    stats
-        .0
-        .entry("avoidance")
-        .or_default()
-        .push(start.elapsed());
+    stats.add("avoidance", start.elapsed());
 }
 
 const SPATIAL_CELL_SIZE: f32 = PREFERRED_DISTANCE;

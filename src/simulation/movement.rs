@@ -69,5 +69,5 @@ pub fn move_with_flow_field(world: &mut World) {
             }
         });
 
-    stats.0.entry("movement").or_default().push(start.elapsed());
+    stats.add("movement", start.elapsed());
 }

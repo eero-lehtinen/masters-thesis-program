@@ -15,6 +15,16 @@ impl Plugin for StatisticsPlugin {
 #[derive(Resource, Default)]
 pub struct Statistics(pub HashMap<&'static str, Vec<Duration>>);
 
+impl Statistics {
+    pub fn add(&mut self, name: &'static str, duration: Duration) {
+        self.0.entry(name).or_default().push(duration);
+    }
+
+    pub fn last_mut(&mut self, name: &'static str) -> Option<&mut Duration> {
+        self.0.get_mut(name)?.last_mut()
+    }
+}
+
 pub fn is_exiting(mut exit: EventReader<AppExit>) -> bool {
     exit.read().next().is_some()
 }

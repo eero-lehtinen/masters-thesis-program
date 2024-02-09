@@ -6,8 +6,10 @@ use crate::{
 use bevy::{
     ecs::system::SystemState,
     prelude::*,
+    tasks::{AsyncComputeTaskPool, Task},
     utils::{HashSet, Instant},
 };
+use futures_lite::future;
 use geo_types::Coordinate;
 use itertools::Itertools;
 use ndarray::Array2;
@@ -24,13 +26,24 @@ pub struct NavigationPlugin;
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FlowField>()
+            .insert_resource(RunInTask(true))
+            .init_resource::<FlowFieldGenerate>()
             .add_systems(PreStartup, init_nav_grid.after(LevelStartupSet::Spawn))
             .add_systems(
                 PreUpdate,
-                generate_flow_field_system.in_set(SimulationSet::GenNavigation),
+                (
+                    generate_flow_field_system.run_if(resource_equals(RunInTask(false))),
+                    (start_flow_field_generation_task, handle_flow_field_task)
+                        .chain()
+                        .run_if(resource_equals(RunInTask(true))),
+                )
+                    .in_set(SimulationSet::GenNavigation),
             );
     }
 }
+
+#[derive(Resource, PartialEq, Eq)]
+struct RunInTask(bool);
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct NavGrid(pub Arc<NavGridInner>);
@@ -487,48 +500,56 @@ fn generate_flow_field_system(world: &mut World) {
         .collect::<Vec<_>>();
 
     let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
-    stats.0.entry("flow_field").or_default().push(duration);
+    stats.add("flow_field", duration);
     flow_field.0 = flow_field_inner;
 }
 
-// #[derive(Resource, Default)]
-// pub struct FlowFieldGenerate {
-//     task: Option<Task<(Duration, FlowFieldInner)>>,
-//     last_started: Duration,
-// }
-// const MIN_NAV_GEN_INTERVAL: Duration = Duration::from_millis(200);
-// pub fn start_flow_field_generation_task(
-//     nav_grid: Res<NavGrid>,
-//     mut gen: ResMut<FlowFieldGenerate>,
-//     target_query: Query<&Transform>,
-//     time: Res<Time<Virtual>>,
-// ) {
-//     if gen.task.is_some() || time.elapsed() - gen.last_started < MIN_NAV_GEN_INTERVAL {
-//         return;
-//     }
-//     // When the last player dies, just continue going towards the latest corpse
-//     let targets = target_query
-//         .iter()
-//         .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
-//         .collect::<Vec<_>>();
-//
-//     let nav_grid = nav_grid.clone();
-//
-//     let task_pool = AsyncComputeTaskPool::get();
-//     let task = task_pool.spawn(async move { generate_flow_field(nav_grid, targets) });
-//
-//     gen.task = Some(task);
-//     gen.last_started = time.elapsed();
-// }
-//
-// pub fn handle_flow_field_task(
-//     mut gen: ResMut<FlowFieldGenerate>,
-//     mut flow_field: ResMut<FlowField>,
-// ) {
-//     if let Some(task) = gen.task.as_mut() {
-//         if let Some((dur, flow_field_res)) = future::block_on(future::poll_once(task)) {
-//             flow_field.0 = flow_field_res;
-//             gen.task = None;
-//         }
-//     }
-// }
+#[derive(Resource, Default)]
+struct FlowFieldGenerate {
+    task: Option<Task<(Duration, FlowFieldInner)>>,
+    last_started: Duration,
+}
+const MIN_NAV_GEN_INTERVAL: Duration = Duration::from_millis(200);
+fn start_flow_field_generation_task(
+    nav_grid: Res<NavGrid>,
+    mut gen: ResMut<FlowFieldGenerate>,
+    target_q: Query<&Transform, With<Target>>,
+    time: Res<Time<Virtual>>,
+    mut stats: ResMut<Statistics>,
+) {
+    let start = Instant::now();
+    if gen.task.is_some() || time.elapsed() - gen.last_started < MIN_NAV_GEN_INTERVAL {
+        stats.add("flow_field", start.elapsed());
+        return;
+    }
+    // When the last player dies, just continue going towards the latest corpse
+    let targets = target_q
+        .iter()
+        .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
+        .collect::<Vec<_>>();
+
+    let nav_grid = Arc::clone(&nav_grid);
+
+    let task_pool = AsyncComputeTaskPool::get();
+    let task = task_pool.spawn(async move { generate_flow_field_impl(nav_grid, targets) });
+
+    gen.task = Some(task);
+    gen.last_started = time.elapsed();
+    stats.add("flow_field", start.elapsed());
+}
+
+fn handle_flow_field_task(
+    mut gen: ResMut<FlowFieldGenerate>,
+    mut flow_field: ResMut<FlowField>,
+    mut stats: ResMut<Statistics>,
+) {
+    let start = Instant::now();
+    if let Some(task) = gen.task.as_mut() {
+        if let Some((_, flow_field_res)) = future::block_on(future::poll_once(task)) {
+            flow_field.0 = flow_field_res;
+            gen.task = None;
+        }
+    }
+
+    *stats.last_mut("flow_field").unwrap() += start.elapsed();
+}
