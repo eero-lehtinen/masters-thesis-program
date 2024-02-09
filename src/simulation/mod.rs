@@ -30,8 +30,8 @@ impl Plugin for SimulationPlugin {
                 SimulationSet::Spawn,
                 SimulationSet::Flush,
                 SimulationSet::GenNavigation,
-                SimulationSet::LocalAvoidance,
                 SimulationSet::Move,
+                SimulationSet::LocalAvoidance,
                 SimulationSet::ApplyColliders,
             )
                 .chain(),

@@ -26,7 +26,7 @@ pub struct NavigationPlugin;
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FlowField>()
-            .insert_resource(RunInTask(true))
+            .insert_resource(RunInTask(false))
             .init_resource::<FlowFieldGenerate>()
             .add_systems(PreStartup, init_nav_grid.after(LevelStartupSet::Spawn))
             .add_systems(
