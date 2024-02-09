@@ -56,6 +56,7 @@ impl Plugin for VisualizationPlugin {
                     update_flow_field_color,
                     draw_flow_field_gizmos.run_if(resource_equals(ShowFlowFieldLines(true))),
                     update_diagnostics_text,
+                    z_sort,
                 ),
             );
     }
@@ -89,7 +90,7 @@ fn add_enemy_sprites(
     for entity in new_enemy_q.iter() {
         commands.entity(entity).insert((
             Sprite {
-                color: Color::rgb_u8(55, 41, 255).with_a(0.6),
+                color: Color::WHITE.with_a(0.6),
                 custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
                 ..default()
             },
@@ -441,4 +442,10 @@ fn update_diagnostics_text(
     );
 
     text.sections[0].value = value;
+}
+
+fn z_sort(mut q: Query<&mut Transform, With<Enemy>>) {
+    q.for_each_mut(|mut tr| {
+        tr.translation.z = 10. - tr.translation.y * 0.0001;
+    });
 }
