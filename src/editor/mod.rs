@@ -833,14 +833,14 @@ fn scale_selection(
 
 fn scale_level_size(mut level_size: ResMut<LevelSize>, editor_inputs: Res<EditorInputs>) {
     if editor_inputs[EditorAction::IncreaseLevelSize].just_pressed {
-        level_size.0 += 100.0;
+        level_size.0 += 10.0;
         info!("Level size: {}", level_size.0);
     }
     if editor_inputs[EditorAction::DecreaseLevelSize].just_pressed {
-        if level_size.0 < 150.0 {
+        if level_size.0 < 15.0 {
             return;
         }
-        level_size.0 -= 100.0;
+        level_size.0 -= 10.0;
         info!("Level size: {}", level_size.0);
     }
 }

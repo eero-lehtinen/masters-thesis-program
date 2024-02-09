@@ -107,7 +107,7 @@ fn add_target_sprites(
         commands.entity(entity).insert((
             Sprite {
                 color: Color::hex("#3A90E0").unwrap().with_a(0.8),
-                custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
+                custom_size: Some(Vec2::splat(ENEMY_RADIUS * 6.)),
                 ..default()
             },
             asset_server.load::<Image>("cross.png"),
@@ -124,7 +124,7 @@ fn add_spawn_point_sprites(
         commands.entity(entity).insert((
             Sprite {
                 color: Color::hex("#8E2CD8").unwrap().with_a(0.8),
-                custom_size: Some(Vec2::splat(ENEMY_RADIUS * 2.)),
+                custom_size: Some(Vec2::splat(ENEMY_RADIUS * 6.)),
                 ..default()
             },
             asset_server.load::<Image>("hollow_circle.png"),
