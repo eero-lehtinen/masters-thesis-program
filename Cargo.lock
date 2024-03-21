@@ -2655,6 +2655,7 @@ dependencies = [
  "bevy_mod_debugdump",
  "bevy_pancam",
  "bevy_rapier2d",
+ "bitflags 2.4.2",
  "clap",
  "earcutr",
  "enum-map",

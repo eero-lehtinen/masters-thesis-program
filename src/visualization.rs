@@ -276,6 +276,7 @@ fn dran_nav_grid(level_size: Res<LevelSize>, mut gizmos: Gizmos) {
     }
 }
 
+#[cfg(not(feature = "navigation2"))]
 fn update_flow_field_color(
     flow_field: Option<Res<FlowField>>,
     sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
@@ -318,6 +319,7 @@ fn update_flow_field_color(
         });
 }
 
+#[cfg(not(feature = "navigation2"))]
 fn draw_flow_field_gizmos(
     flow_field: Res<FlowField>,
     nav_grid: Res<NavGrid>,
@@ -360,6 +362,118 @@ fn draw_flow_field_gizmos(
             gizmo_arrow(&mut gizmos, pos - dir, pos + dir, Color::BLACK);
         }
     }
+}
+
+#[cfg(feature = "navigation2")]
+use crate::simulation::navigation::IntegrationField;
+
+#[cfg(feature = "navigation2")]
+fn update_flow_field_color(
+    // flow_field: Option<Res<FlowField>>,
+    integration_field: Option<Res<IntegrationField>>,
+    nav_grid: Res<NavGrid>,
+    sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
+    mut images: ResMut<Assets<Image>>,
+    level: Res<Level>,
+) {
+    let Some(integration_field) = integration_field else {
+        return;
+    };
+
+    let (width, _) = integration_field.0.dim();
+
+    let image_handle = sprite_q.single();
+    let image = images.get_mut(image_handle).unwrap();
+    let mut change_pixel = move |x, y, color: [u8; 4]| {
+        let y = image.height() as usize - y - 1;
+        let pixel = &mut image.data[(x + y * width) * 4..(x + y * width) * 4 + 4];
+        pixel.copy_from_slice(&color);
+    };
+
+    let max_dist = 10.;
+
+    integration_field
+        .0
+        .indexed_iter()
+        .for_each(|((x, y), &(val, flags))| {
+            if !nav_grid.0.walkable[[x, y]] {
+                change_pixel(x, y, [0, 0, 0, 255]);
+                return;
+            }
+
+            if flags == 1 {
+                change_pixel(x, y, [0, 0, 255, 255]);
+                return;
+            } else if flags == 2 {
+                change_pixel(x, y, [255, 0, 0, 255]);
+                return;
+            }
+
+            // else if flags == 0b10 {
+            //     change_pixel(x, y, [0, 0, 255, 255]);
+            //     return;
+            // }
+            // else if flags == 0b1 {
+            //     change_pixel(x, y, [0, 255, 0, 255]);
+            //     return;
+            // }
+            // } else if flags & 0b10 != 0 {
+            //     change_pixel(x, y, [0, 0, 255, 255]);
+            //     return;
+            // } else if flags & 0b1 != 0 {
+            //     change_pixel(x, y, [0, 255, 0, 255]);
+            //     return;
+            // }
+
+            let dist = (val as f32).min(max_dist) / max_dist;
+            let color = Color::hsla((1. - dist) * 120., 1., 0.5, 1.);
+            change_pixel(x, y, color.as_rgba_u8());
+        });
+}
+
+#[cfg(feature = "navigation2")]
+fn draw_flow_field_gizmos(
+    flow_field: Res<FlowField>,
+    nav_grid: Res<NavGrid>,
+    mut gizmos: Gizmos,
+    camera_q: Query<&Transform, With<Camera>>,
+) {
+    // let camera_tr = camera_q.single();
+    // let camera_pos_index = nav_grid.pos_to_index(camera_tr.translation.truncate());
+    //
+    // let cx = camera_pos_index[0];
+    // let cy = camera_pos_index[1];
+    //
+    // let extent = 140;
+    //
+    // let (width, height) = flow_field.0.dim();
+    //
+    // let range_x = cx.saturating_sub(extent)..(cx + extent).min(width);
+    // let range_y = cy.saturating_sub(extent)..(cy + extent).min(height);
+    //
+    // // Draw flow field
+    // for x in range_x.clone() {
+    //     for y in range_y.clone() {
+    //         let (_, flow) = flow_field.0[[x, y]];
+    //         let pos = NavGridInner::index_to_pos([x, y]);
+    //         if flow == Flow::None {
+    //             gizmos.line_2d(
+    //                 pos - Vec2::new(0.0, 0.1),
+    //                 pos + Vec2::new(0.0, 0.1),
+    //                 Color::RED,
+    //             );
+    //             continue;
+    //         }
+    //
+    //         if flow == Flow::Source {
+    //             draw_gizmo_cross(&mut gizmos, pos, Color::BLACK, NAV_SCALE);
+    //             continue;
+    //         }
+    //
+    //         let dir = flow.to_dir() * 0.45 * NAV_SCALE;
+    //         gizmo_arrow(&mut gizmos, pos - dir, pos + dir, Color::BLACK);
+    //     }
+    // }
 }
 
 fn gizmo_arrow(gizmos: &mut Gizmos, from: Vec2, to: Vec2, color: Color) {

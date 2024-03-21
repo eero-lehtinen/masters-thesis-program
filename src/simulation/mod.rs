@@ -8,7 +8,16 @@ use self::{
 mod collision;
 mod local_avoidance;
 mod movement;
+
+// #[cfg(not(feature = "navigation2"))]
 pub mod navigation;
+// #[cfg(feature = "navigation2")]
+// mod navigation2;
+// #[cfg(feature = "navigation2")]
+// pub mod navigation {
+//     pub use super::navigation2::*;
+// }
+
 mod rng;
 pub mod spawning;
 

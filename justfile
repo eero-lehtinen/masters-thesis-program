@@ -1,6 +1,9 @@
 set shell := ["sh", "-c"]
 set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
 
+run *ARGS:
+	cargo run --release -- {{ARGS}}
+
 run-trace *ARGS:
 	cargo run --release --features bevy/trace_chrome -- {{ARGS}}
 

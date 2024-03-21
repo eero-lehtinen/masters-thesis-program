@@ -96,8 +96,7 @@ pub fn keep_distance_to_others(world: &mut World) {
                 let jitter_remove_add = 3;
                 total_delta /= (valid_neighbors + jitter_remove_add) as f32 * 0.5;
 
-                // TODO: Could move to the outermost possible edge instead to reduce jumping
-                if let Some((_, flow)) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
+                if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
                     if *flow != Flow::None {
                         translation.translation.x += total_delta.x;
                         translation.translation.y += total_delta.y;

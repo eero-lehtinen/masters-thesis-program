@@ -53,7 +53,7 @@ pub struct NavGridInner {
     #[allow(dead_code)]
     size: f32,
     inflated_walls: Vec<Vertices>,
-    walkable: Array2<bool>,
+    pub walkable: Array2<bool>,
     /// Contains bitsets of directions that can be moved in from a given index
     pub grid: Array2<u8>,
 }
@@ -67,6 +67,12 @@ pub type FlowFieldInner = Array2<(f32, Flow)>;
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct FlowField(pub FlowFieldInner);
+
+impl FlowField {
+    pub fn get(&self, idx: [usize; 2]) -> Option<&Flow> {
+        self.0.get(idx).map(|(_, flow)| flow)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Flow {
@@ -266,7 +272,7 @@ pub const fn neighbor_idx([x, y]: [usize; 2], flow: Flow) -> [usize; 2] {
     }
 }
 
-fn find_valid_source(nav_grid: &NavGrid, pos: Vec2) -> [usize; 2] {
+pub fn find_valid_source(nav_grid: &NavGrid, pos: Vec2) -> [usize; 2] {
     let idx = nav_grid.pos_to_index(pos);
     if nav_grid.walkable()[idx] {
         return idx;
@@ -365,8 +371,6 @@ pub fn generate_flow_field_impl(
         // - Check North, East, South, West before diagonals: 14x speedup !!!!
         // - Use a bitfield instead of checking all 8 directions: 1.5x speedup
 
-        // Latest runtime is about 23ms, for some reason it jumps around though
-
         let grid_val = nav_grid.grid[idx];
         macro_rules! check_neighbor {
             ($flow:expr) => {
@@ -410,10 +414,6 @@ pub fn generate_flow_field_impl(
         check_neighbor_raycast!(Flow::East);
         check_neighbor_raycast!(Flow::South);
         check_neighbor_raycast!(Flow::West);
-        check_neighbor_raycast!(Flow::NorthEast);
-        check_neighbor_raycast!(Flow::SouthEast);
-        check_neighbor_raycast!(Flow::SouthWest);
-        check_neighbor_raycast!(Flow::NorthWest);
     }
 
     let elapsed = start.elapsed();
