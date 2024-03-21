@@ -1,5 +1,6 @@
 use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
+use crate::simulation::navigation::NavGridInner;
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use super::{spawning::Enemy, SimulationSet};
@@ -14,9 +15,6 @@ impl Plugin for MovementPlugin {
 
 const ENEMY_SPEED: f32 = 6.;
 use super::navigation::NavGrid;
-
-#[cfg(not(feature = "navigation2"))]
-use super::navigation::NavGridInner;
 
 pub fn move_with_flow_field(world: &mut World) {
     use super::navigation::{Flow, FlowField};
@@ -44,7 +42,7 @@ pub fn move_with_flow_field(world: &mut World) {
             let add_vel = flow_field.get(idx).copied().map_or_else(
                 || Vec2::ZERO,
                 |flow| {
-                    #[cfg(not(feature = "navigation2"))]
+                    #[cfg(feature = "navigation1")]
                     if flow == Flow::Source {
                         (NavGridInner::index_to_pos(idx) - pos).normalize_or_zero()
                             * max_speed_change
@@ -54,15 +52,15 @@ pub fn move_with_flow_field(world: &mut World) {
                         flow.to_dir() * max_speed_change
                     }
 
-                    #[cfg(feature = "navigation2")]
-                    if flow == Flow::LineOfSight {
-                        let closest = flow_field.closest_target(pos).unwrap();
-                        (closest - pos).normalize_or_zero() * max_speed_change
-                    } else if flow == Flow::None {
-                        Vec2::ZERO
-                    } else {
-                        flow.to_dir() * max_speed_change
-                    }
+                    // #[cfg(feature = "navigation2")]
+                    // if flow == Flow::LineOfSight {
+                    //     let closest = flow_field.closest_target(pos).unwrap();
+                    //     (closest - pos).normalize_or_zero() * max_speed_change
+                    // } else if flow == Flow::None {
+                    //     Vec2::ZERO
+                    // } else {
+                    //     flow.to_dir() * max_speed_change
+                    // }
                 },
             );
 

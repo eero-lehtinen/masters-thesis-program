@@ -31,10 +31,13 @@ pub struct VisualizationPlugin;
 impl Plugin for VisualizationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((PanCamPlugin,))
-            .insert_resource(GizmoConfig {
-                line_width: 2.0,
-                ..default()
-            })
+            .insert_gizmo_group(
+                DefaultGizmoConfigGroup,
+                GizmoConfig {
+                    line_width: 2.0,
+                    ..default()
+                },
+            )
             .insert_resource(ClearColor(Color::hex("#303030").unwrap()))
             .insert_resource(ShowFlowFieldLines(false))
             .add_systems(
@@ -53,8 +56,8 @@ impl Plugin for VisualizationPlugin {
                     draw_level_bounds,
                     toggle_show_flow_field,
                     dran_nav_grid,
-                    update_flow_field_color,
-                    draw_flow_field_gizmos.run_if(resource_equals(ShowFlowFieldLines(true))),
+                    update_flow_field_color_nav1,
+                    draw_flow_field_gizmos_nav1.run_if(resource_equals(ShowFlowFieldLines(true))),
                     update_diagnostics_text,
                     z_sort,
                 ),
@@ -156,9 +159,9 @@ fn make_triangulated_mesh(vertices: &Vertices) -> anyhow::Result<Mesh> {
         .map(|mut it| [*it.next().unwrap(), *it.next().unwrap(), 0.0])
         .collect::<Vec<[f32; 3]>>();
 
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, default());
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, mesh_vert);
-    mesh.set_indices(Some(Indices::U32(triangulated_indices)));
+    mesh.insert_indices(Indices::U32(triangulated_indices));
     Ok(mesh)
 }
 
@@ -203,14 +206,14 @@ pub fn draw_gizmo_cross(gizmos: &mut Gizmos, pos: Vec2, color: Color, size: f32)
 }
 
 fn toggle_show_flow_field(
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
     mut show_flow_field: ResMut<ShowFlowFieldLines>,
     flow_field: Option<Res<FlowField>>,
 ) {
     if flow_field.is_none() {
         return;
     }
-    if input.just_pressed(KeyCode::F) {
+    if input.just_pressed(KeyCode::KeyF) {
         info!("Toggling flow field");
         show_flow_field.0 = !show_flow_field.0;
     }
@@ -237,6 +240,7 @@ fn add_flow_field_sprite(
         TextureDimension::D2,
         &[255, 255, 255, 255],
         TextureFormat::Rgba8Unorm,
+        default(),
     );
     image.sampler = ImageSampler::nearest();
     let handle = images.add(image);
@@ -276,8 +280,7 @@ fn dran_nav_grid(level_size: Res<LevelSize>, mut gizmos: Gizmos) {
     }
 }
 
-#[cfg(not(feature = "navigation2"))]
-fn update_flow_field_color(
+fn update_flow_field_color_nav1(
     flow_field: Option<Res<FlowField>>,
     sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
     mut images: ResMut<Assets<Image>>,
@@ -319,8 +322,7 @@ fn update_flow_field_color(
         });
 }
 
-#[cfg(not(feature = "navigation2"))]
-fn draw_flow_field_gizmos(
+fn draw_flow_field_gizmos_nav1(
     flow_field: Res<FlowField>,
     nav_grid: Res<NavGrid>,
     mut gizmos: Gizmos,
@@ -364,75 +366,74 @@ fn draw_flow_field_gizmos(
     }
 }
 
-#[cfg(feature = "navigation2")]
-use crate::simulation::navigation::IntegrationField;
+// #[cfg(feature = "navigation2")]
+// use crate::simulation::navigation::IntegrationField;
 
-#[cfg(feature = "navigation2")]
-fn update_flow_field_color(
-    // flow_field: Option<Res<FlowField>>,
-    integration_field: Option<Res<IntegrationField>>,
-    nav_grid: Res<NavGrid>,
-    sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
-    mut images: ResMut<Assets<Image>>,
-    level: Res<Level>,
-) {
-    let Some(integration_field) = integration_field else {
-        return;
-    };
+// #[cfg(feature = "navigation2")]
+// fn update_flow_field_color(
+//     // flow_field: Option<Res<FlowField>>,
+//     integration_field: Option<Res<IntegrationField>>,
+//     nav_grid: Res<NavGrid>,
+//     sprite_q: Query<&Handle<Image>, With<FlowFieldSprite>>,
+//     mut images: ResMut<Assets<Image>>,
+//     level: Res<Level>,
+// ) {
+//     let Some(integration_field) = integration_field else {
+//         return;
+//     };
+//
+//     let (width, _) = integration_field.0.dim();
+//
+//     let image_handle = sprite_q.single();
+//     let image = images.get_mut(image_handle).unwrap();
+//     let mut change_pixel = move |x, y, color: [u8; 4]| {
+//         let y = image.height() as usize - y - 1;
+//         let pixel = &mut image.data[(x + y * width) * 4..(x + y * width) * 4 + 4];
+//         pixel.copy_from_slice(&color);
+//     };
+//
+//     let max_dist = 10.;
+//
+//     integration_field
+//         .0
+//         .indexed_iter()
+//         .for_each(|((x, y), &(val, flags))| {
+//             if !nav_grid.0.walkable[[x, y]] {
+//                 change_pixel(x, y, [0, 0, 0, 255]);
+//                 return;
+//             }
+//
+//             if flags == 1 {
+//                 change_pixel(x, y, [0, 0, 255, 255]);
+//                 return;
+//             } else if flags == 2 {
+//                 change_pixel(x, y, [255, 0, 0, 255]);
+//                 return;
+//             }
+//
+//             // else if flags == 0b10 {
+//             //     change_pixel(x, y, [0, 0, 255, 255]);
+//             //     return;
+//             // }
+//             // else if flags == 0b1 {
+//             //     change_pixel(x, y, [0, 255, 0, 255]);
+//             //     return;
+//             // }
+//             // } else if flags & 0b10 != 0 {
+//             //     change_pixel(x, y, [0, 0, 255, 255]);
+//             //     return;
+//             // } else if flags & 0b1 != 0 {
+//             //     change_pixel(x, y, [0, 255, 0, 255]);
+//             //     return;
+//             // }
+//
+//             let dist = (val as f32).min(max_dist) / max_dist;
+//             let color = Color::hsla((1. - dist) * 120., 1., 0.5, 1.);
+//             change_pixel(x, y, color.as_rgba_u8());
+//         });
+// }
 
-    let (width, _) = integration_field.0.dim();
-
-    let image_handle = sprite_q.single();
-    let image = images.get_mut(image_handle).unwrap();
-    let mut change_pixel = move |x, y, color: [u8; 4]| {
-        let y = image.height() as usize - y - 1;
-        let pixel = &mut image.data[(x + y * width) * 4..(x + y * width) * 4 + 4];
-        pixel.copy_from_slice(&color);
-    };
-
-    let max_dist = 10.;
-
-    integration_field
-        .0
-        .indexed_iter()
-        .for_each(|((x, y), &(val, flags))| {
-            if !nav_grid.0.walkable[[x, y]] {
-                change_pixel(x, y, [0, 0, 0, 255]);
-                return;
-            }
-
-            if flags == 1 {
-                change_pixel(x, y, [0, 0, 255, 255]);
-                return;
-            } else if flags == 2 {
-                change_pixel(x, y, [255, 0, 0, 255]);
-                return;
-            }
-
-            // else if flags == 0b10 {
-            //     change_pixel(x, y, [0, 0, 255, 255]);
-            //     return;
-            // }
-            // else if flags == 0b1 {
-            //     change_pixel(x, y, [0, 255, 0, 255]);
-            //     return;
-            // }
-            // } else if flags & 0b10 != 0 {
-            //     change_pixel(x, y, [0, 0, 255, 255]);
-            //     return;
-            // } else if flags & 0b1 != 0 {
-            //     change_pixel(x, y, [0, 255, 0, 255]);
-            //     return;
-            // }
-
-            let dist = (val as f32).min(max_dist) / max_dist;
-            let color = Color::hsla((1. - dist) * 120., 1., 0.5, 1.);
-            change_pixel(x, y, color.as_rgba_u8());
-        });
-}
-
-#[cfg(feature = "navigation2")]
-fn draw_flow_field_gizmos(
+fn draw_flow_field_gizmos_nav2(
     flow_field: Res<FlowField>,
     nav_grid: Res<NavGrid>,
     mut gizmos: Gizmos,
@@ -550,7 +551,7 @@ fn update_diagnostics_text(
         .join("\n");
 
     value += &format!(
-        "\ntotal: {:.2} ms, fps: {:.1}",
+        "\ntotal: {:.2} ms, hz: {:.1}",
         total.as_secs_f64() * 1000.,
         1. / total.as_secs_f64()
     );
@@ -559,7 +560,7 @@ fn update_diagnostics_text(
 }
 
 fn z_sort(mut q: Query<&mut Transform, With<Enemy>>) {
-    q.for_each_mut(|mut tr| {
+    q.iter_mut().for_each(|mut tr| {
         tr.translation.z = 10. - tr.translation.y * 0.0001;
     });
 }

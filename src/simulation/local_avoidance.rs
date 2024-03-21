@@ -40,7 +40,9 @@ pub fn make_spatial(world: &mut World) {
     let start = Instant::now();
     spatial.reset();
     let elapsed = start.elapsed();
-    enemy_q.for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
+    enemy_q
+        .iter()
+        .for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
     let elapsed2 = start.elapsed();
     stats.add("spatial_reset", elapsed);
     stats.add("spatial_gen", elapsed2 - elapsed);

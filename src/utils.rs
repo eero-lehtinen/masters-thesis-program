@@ -71,12 +71,6 @@ pub trait Easing {
     fn lerp(self, b: Self, f: f32) -> Self;
 }
 
-impl Easing for f32 {
-    fn lerp(self, b: Self, f: f32) -> Self {
-        self * (1. - f) + b * f
-    }
-}
-
 impl Easing for Color {
     fn lerp(self, b: Self, f: f32) -> Self {
         Color::rgba(

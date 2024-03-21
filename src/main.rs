@@ -5,8 +5,8 @@ use std::fs::File;
 use bevy::{
     app::AppExit, core::FrameCount, prelude::*, time::TimePlugin, window::WindowResolution,
 };
+use bevy_framepace::{FramepacePlugin, FramepaceSettings, Limiter};
 use editor::EditorPlugin;
-use framepace::{FramepacePlugin, FramepaceSettings, Limiter};
 use level::{Level, LevelPath, LevelPlugin};
 use statistics::StatisticsPlugin;
 use visualization::VisualizationPlugin;
@@ -16,7 +16,6 @@ use crate::simulation::SimulationPlugin;
 use clap::{Parser, Subcommand};
 
 mod editor;
-mod framepace;
 pub mod level;
 pub mod simulation;
 pub mod statistics;
@@ -104,7 +103,7 @@ fn main() -> anyhow::Result<()> {
 
     app.add_plugins(LevelPlugin);
     if let Some(level_path) = cli.level {
-        let file = File::open(&level_path)?;
+        let file = File::open(format!("levels/{level_path}.level"))?;
         let mut level: Level = rmp_serde::from_read(file)?;
 
         if let Some(level_size) = cli.level_size {

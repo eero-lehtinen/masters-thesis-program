@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 use std::fmt::Write;
 use std::fs::File;
 
-use bevy::ecs::query::ReadOnlyWorldQuery;
+use bevy::ecs::query::QueryFilter;
 use bevy::ecs::system::SystemState;
 use bevy::utils::HashMap;
 use bevy::{ui::*, utils::HashSet};
@@ -21,7 +21,7 @@ pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<EditingState>()
+        app.init_state::<EditingState>()
             .init_resource::<WallVertices>()
             .init_resource::<SelectionArea>()
             .init_resource::<Selected>()
@@ -53,7 +53,7 @@ impl Plugin for EditorPlugin {
             .add_systems(
                 Update,
                 (
-                    delete_previews.run_if(state_changed::<EditingState>()),
+                    delete_previews.run_if(state_changed::<EditingState>),
                     delete_selection,
                 )
                     .in_set(EditorUpdateSet::Delete),
@@ -218,27 +218,27 @@ use once_cell::sync::Lazy;
 static EDITOR_KEYS: Lazy<EnumMap<EditorAction, (EditorKeyBind, &'static str)>> = Lazy::new(|| {
     use EditorAction::*;
     enum_map! {
-        Save => ((KeyModifier::Ctrl, KeyCode::S).into(), "Save level"),
-        CreateSquareWall => (KeyCode::Key1.into(), "Create a square wall"),
-        CreateCircleWall => (KeyCode::Key2.into(), "Create a circle wall"),
-        CreateBigCircleWall => (KeyCode::Key3.into(), "Create a big circle wall"),
-        CreateEnemySpawn => (KeyCode::Key9.into(), "Create an enemy spawn"),
-        CreatePlayerSpawn => (KeyCode::Key0.into(), "Create a player spawn"),
-        AddWallVertex => (KeyCode::W.into(), "Add a wall vertex"),
-        MoveSelection => (KeyCode::G.into(), "Move selection"),
-        RotateSelection => (KeyCode::R.into(), "Rotate selection"),
-        ScaleSelection => (KeyCode::S.into(), "Scale selection"),
-        DuplicateSelection => (KeyCode::D.into(), "Duplicate selection"),
-        DeleteSelection => (KeyCode::X.into(), "Delete selection"),
-        SelectLinked => (KeyCode::L.into(), "Select linked vertices"),
+        Save => ((KeyModifier::Ctrl, KeyCode::KeyS).into(), "Save level"),
+        CreateSquareWall => (KeyCode::Digit1.into(), "Create a square wall"),
+        CreateCircleWall => (KeyCode::Digit2.into(), "Create a circle wall"),
+        CreateBigCircleWall => (KeyCode::Digit3.into(), "Create a big circle wall"),
+        CreateEnemySpawn => (KeyCode::Digit9.into(), "Create an enemy spawn"),
+        CreatePlayerSpawn => (KeyCode::Digit0.into(), "Create a player spawn"),
+        AddWallVertex => (KeyCode::KeyW.into(), "Add a wall vertex"),
+        MoveSelection => (KeyCode::KeyG.into(), "Move selection"),
+        RotateSelection => (KeyCode::KeyR.into(), "Rotate selection"),
+        ScaleSelection => (KeyCode::KeyS.into(), "Scale selection"),
+        DuplicateSelection => (KeyCode::KeyD.into(), "Duplicate selection"),
+        DeleteSelection => (KeyCode::KeyX.into(), "Delete selection"),
+        SelectLinked => (KeyCode::KeyL.into(), "Select linked vertices"),
         IncreaseLevelSize => (KeyCode::Period.into(), "Increase level size"),
         DecreaseLevelSize => (KeyCode::Comma.into(), "Decrease level size"),
     }
 });
 
 fn collect_inputs(
-    inputs: Res<Input<KeyCode>>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    inputs: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut editor_inputs: ResMut<EditorInputs>,
     mut editor_mouse_buttons: ResMut<EditorMouseButtons>,
     mut mouse_pos: ResMut<MousePos>,
@@ -1090,8 +1090,8 @@ const POINT_SELECTION_DISTANCE_TRESHOLD: f32 = 5.0;
 
 fn handle_area_selection(
     mouse_pos: Res<MousePos>,
-    mouse_input: Res<Input<MouseButton>>,
-    input: Res<Input<KeyCode>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    input: Res<ButtonInput<KeyCode>>,
     mut selection_area_start: Local<Vec2>,
     mut selection_area: ResMut<SelectionArea>,
     wall_vertices: Res<WallVertices>,
@@ -1215,7 +1215,7 @@ fn update_hide_after(
     }
 }
 
-fn get_positions<F: ReadOnlyWorldQuery>(world: &mut World) -> Vec<Vec2> {
+fn get_positions<F: QueryFilter>(world: &mut World) -> Vec<Vec2> {
     world
         .query_filtered::<&Transform, F>()
         .iter(world)
@@ -1255,7 +1255,8 @@ fn save(world: &mut World) {
                 world
                     .query_filtered::<(&mut HideAfter, &mut Visibility, &mut Text), With<SaveText>>(
                     )
-                    .for_each_mut(world, |(mut hide_after, mut vis, mut text)| {
+                    .iter_mut(world)
+                    .for_each(|(mut hide_after, mut vis, mut text)| {
                         hide_after.0 = 2.0;
                         *vis = Visibility::Visible;
                         text.sections[0].value = format!("Saved as '{name}'");
@@ -1265,7 +1266,8 @@ fn save(world: &mut World) {
                 world
                     .query_filtered::<(&mut HideAfter, &mut Visibility, &mut Text), With<SaveText>>(
                     )
-                    .for_each_mut(world, |(mut hide_after, mut vis, mut text)| {
+                    .iter_mut(world)
+                    .for_each(|(mut hide_after, mut vis, mut text)| {
                         hide_after.0 = 2.0;
                         *vis = Visibility::Visible;
                         text.sections[0].value = format!("Failed to save level: {e}");

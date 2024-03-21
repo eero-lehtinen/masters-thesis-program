@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 bench = []
+navigation1 = []
 navigation2 = []
 
 [profile.dev]
@@ -19,8 +20,8 @@ debug = false
 incremental = true
 
 [dependencies]
-bevy = "0.12.1"
-bevy_rapier2d = { git = "https://github.com/eero-lehtinen/bevy_rapier", branch = "update1", features = [
+bevy = "0.13.1"
+bevy_rapier2d = { git = "https://github.com/eero-lehtinen/bevy_rapier", branch = "bevy13", features = [
 	"debug-render-2d",
 	"serde-serialize",
 ] }
@@ -29,7 +30,7 @@ ndarray = "0.15.6"
 geo-types = "0.4"
 offset-polygon = "0.1.0"
 itertools = "0.12.0"
-bevy_pancam = "0.10.0"
+bevy_pancam = "0.11.0"
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 earcutr = "0.4.3"
@@ -44,3 +45,47 @@ serde = "1.0.196"
 rmp-serde = "1.1.2"
 clap = { version = "4.4.18", features = ["derive"] }
 bitflags = "2.4.2"
+bevy_framepace = "0.15.0"
+
+[patch.crates-io]
+bevy = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_a11y = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_animation = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_app = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_asset = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+# bevy_audio = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_core = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_core_pipeline = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_derive = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_diagnostic = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+# bevy_dylib = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+# bevy_dynamic_plugin = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_ecs = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+# bevy_ecs_compile_fail_tests = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_encase_derive = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_gilrs = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_gizmos = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_gltf = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_hierarchy = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_input = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_internal = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_log = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+# bevy_macros_compile_fail_tests = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_macro_utils = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_math = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_mikktspace = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_pbr = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_ptr = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_reflect = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+# bevy_reflect_compile_fail_tests = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_render = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_scene = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_sprite = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_tasks = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_text = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_time = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_transform = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_ui = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_utils = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_window = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
+bevy_winit = { git = "https://github.com/eero-lehtinen/bevy", branch = "v0.13.1-nvidia-fix" }
