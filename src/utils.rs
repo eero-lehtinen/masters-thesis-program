@@ -1,3 +1,5 @@
+use std::iter;
+
 use bevy::prelude::*;
 
 pub type Vertices = Vec<Vec2>;
@@ -80,4 +82,71 @@ impl Easing for Color {
             self.a().lerp(b.a(), f),
         )
     }
+}
+
+pub fn is_point_in_polygon(point: Vec2, vertices: &Vertices) -> bool {
+    if vertices.len() < 3 {
+        return false;
+    }
+    // This algo is from copilot, don't ask me
+    let mut odd_nodes = false;
+    for (vj, vi) in iter::once(vertices.last().unwrap())
+        .chain(vertices.iter())
+        .zip(vertices.iter())
+    {
+        if ((vi.y < point.y && vj.y >= point.y) || (vj.y < point.y && vi.y >= point.y))
+            && ((point.y - vi.y) / (vj.y - vi.y)).mul_add(vj.x - vi.x, vi.x) < point.x
+        {
+            odd_nodes = !odd_nodes;
+        }
+    }
+    odd_nodes
+}
+
+pub fn is_clockwise(vertices: &Vertices) -> bool {
+    let mut sum = 0.;
+    for i in 0..vertices.len() {
+        let vi = vertices[i];
+        let vj = vertices[(i + 1) % vertices.len()];
+        sum += (vj.x - vi.x) * (vj.y + vi.y);
+    }
+    sum > 0.
+}
+
+use geo_types::Coordinate;
+use itertools::Itertools;
+use offset_polygon::offset_polygon;
+
+pub fn inflate_polygon(vertices: &Vertices, amount: f32) -> Option<Vertices> {
+    if vertices.len() < 3 {
+        return None;
+    }
+
+    let mut coords = vertices
+        .iter()
+        .map(|v| Coordinate {
+            x: f64::from(v.x),
+            y: f64::from(v.y),
+        })
+        .cycle()
+        .take(vertices.len() + 1)
+        .collect_vec();
+
+    if is_clockwise(vertices) {
+        coords.reverse();
+    }
+
+    // TODO: Detect failures properly (common failure is to return a very small or empty polygon)
+    let lines = match offset_polygon(&coords.into(), f64::from(amount), 10.) {
+        Ok(lines) => lines.first()?.clone(),
+        Err(_) => {
+            return None;
+        }
+    };
+
+    lines
+        .points_iter()
+        .map(|c| Vec2::new(c.x() as f32, c.y() as f32))
+        .collect_vec()
+        .into()
 }

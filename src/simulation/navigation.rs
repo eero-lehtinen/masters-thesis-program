@@ -1,7 +1,7 @@
 use crate::{
     level::{Level, LevelStartupSet, Target},
     statistics::Statistics,
-    utils::{ToUsizeArr, ToVec2, Vertices},
+    utils::{inflate_polygon, is_point_in_polygon, ToUsizeArr, ToVec2, Vertices},
 };
 use bevy::{
     ecs::system::SystemState,
@@ -272,34 +272,6 @@ pub const fn neighbor_idx([x, y]: [usize; 2], flow: Flow) -> [usize; 2] {
     }
 }
 
-pub fn find_valid_source(nav_grid: &NavGrid, pos: Vec2) -> [usize; 2] {
-    let idx = nav_grid.pos_to_index(pos);
-    if nav_grid.walkable()[idx] {
-        return idx;
-    }
-    let mut queue = VecDeque::new();
-    let mut visited = HashSet::new();
-    queue.push_back(idx);
-    visited.insert(idx);
-    while let Some(idx) = queue.pop_front() {
-        for flow in &Flow::DIRECTIONALS {
-            let idx = neighbor_idx(idx, *flow);
-            let Some(walkable) = nav_grid.walkable().get(idx) else {
-                continue;
-            };
-            if *walkable {
-                return idx;
-            }
-            if visited.contains(&idx) {
-                continue;
-            }
-            queue.push_back(idx);
-        }
-    }
-    // Shouldn't happen with valid levels, but just in case
-    idx
-}
-
 #[inline(always)]
 fn check_neighbor(
     flow: Flow,
@@ -421,69 +393,6 @@ pub fn generate_flow_field_impl(
     (elapsed, flow_field)
 }
 
-fn is_point_in_polygon(point: Vec2, vertices: &Vertices) -> bool {
-    if vertices.len() < 3 {
-        return false;
-    }
-    // This algo is from copilot, don't ask me
-    let mut odd_nodes = false;
-    for (vj, vi) in iter::once(vertices.last().unwrap())
-        .chain(vertices.iter())
-        .zip(vertices.iter())
-    {
-        if ((vi.y < point.y && vj.y >= point.y) || (vj.y < point.y && vi.y >= point.y))
-            && ((point.y - vi.y) / (vj.y - vi.y)).mul_add(vj.x - vi.x, vi.x) < point.x
-        {
-            odd_nodes = !odd_nodes;
-        }
-    }
-    odd_nodes
-}
-
-fn is_clockwise(vertices: &Vertices) -> bool {
-    let mut sum = 0.;
-    for i in 0..vertices.len() {
-        let vi = vertices[i];
-        let vj = vertices[(i + 1) % vertices.len()];
-        sum += (vj.x - vi.x) * (vj.y + vi.y);
-    }
-    sum > 0.
-}
-
-fn inflate_polygon(vertices: &Vertices, amount: f32) -> Option<Vertices> {
-    if vertices.len() < 3 {
-        return None;
-    }
-
-    let mut coords = vertices
-        .iter()
-        .map(|v| Coordinate {
-            x: f64::from(v.x),
-            y: f64::from(v.y),
-        })
-        .cycle()
-        .take(vertices.len() + 1)
-        .collect_vec();
-
-    if is_clockwise(vertices) {
-        coords.reverse();
-    }
-
-    // TODO: Detect failures properly (common failure is to return a very small or empty polygon)
-    let lines = match offset_polygon(&coords.into(), f64::from(amount), 10.) {
-        Ok(lines) => lines.first()?.clone(),
-        Err(_) => {
-            return None;
-        }
-    };
-
-    lines
-        .points_iter()
-        .map(|c| Vec2::new(c.x() as f32, c.y() as f32))
-        .collect_vec()
-        .into()
-}
-
 fn generate_flow_field_system(world: &mut World) {
     let mut system_state: SystemState<(
         Res<NavGrid>,
@@ -496,7 +405,7 @@ fn generate_flow_field_system(world: &mut World) {
     // When the last player dies, just continue going towards the latest corpse
     let targets = target_q
         .iter()
-        .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
+        .map(|tr| nav_grid.pos_to_index(tr.translation.truncate()))
         .collect::<Vec<_>>();
 
     let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
@@ -525,7 +434,7 @@ fn start_flow_field_generation_task(
     // When the last player dies, just continue going towards the latest corpse
     let targets = target_q
         .iter()
-        .map(|tr| find_valid_source(&nav_grid, tr.translation.truncate()))
+        .map(|tr| nav_grid.pos_to_index(tr.translation.truncate()))
         .collect::<Vec<_>>();
 
     let nav_grid = Arc::clone(&nav_grid);

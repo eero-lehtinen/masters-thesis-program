@@ -1,8 +1,8 @@
 ```
-cargo run -r -- -l levels/a.level viewer
+cargo run -r --features navigation1 -- -l a viewer
 
-cargo run -r -- -l levels/a.level bench --ticks 1000
+cargo run -r --features navigation1 -- -l a bench --ticks 1000
 
-cargo run -r -- editor
+cargo run -r --features navigation1 -- editor
 
 ```

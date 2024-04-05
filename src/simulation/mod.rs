@@ -9,14 +9,14 @@ mod collision;
 mod local_avoidance;
 mod movement;
 
-// #[cfg(not(feature = "navigation2"))]
+#[cfg(feature = "navigation1")]
 pub mod navigation;
-// #[cfg(feature = "navigation2")]
-// mod navigation2;
-// #[cfg(feature = "navigation2")]
-// pub mod navigation {
-//     pub use super::navigation2::*;
-// }
+#[cfg(feature = "navigation2")]
+mod navigation2;
+#[cfg(feature = "navigation2")]
+pub mod navigation {
+    pub use super::navigation2::*;
+}
 
 mod rng;
 pub mod spawning;
@@ -26,9 +26,9 @@ pub struct SimulationPlugin;
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            NavigationPlugin,
             MovementPlugin,
             LocalAvoidancePlugin,
+            NavigationPlugin,
             SpawningPlugin,
             // CollisionPlugin,
         ))

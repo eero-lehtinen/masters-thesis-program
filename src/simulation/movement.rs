@@ -14,11 +14,9 @@ impl Plugin for MovementPlugin {
 }
 
 const ENEMY_SPEED: f32 = 6.;
-use super::navigation::NavGrid;
+use super::navigation::{Flow, FlowField, NavGrid};
 
 pub fn move_with_flow_field(world: &mut World) {
-    use super::navigation::{Flow, FlowField};
-
     let mut system_state: SystemState<(
         Query<(&mut Transform, &mut Velocity), With<Enemy>>,
         Res<NavGrid>,
@@ -28,7 +26,7 @@ pub fn move_with_flow_field(world: &mut World) {
 
     let (mut enemy_q, nav_grid, flow_field, mut stats) = system_state.get_mut(world);
 
-    let Some(flow_field) = flow_field else {
+    let Some(flow_field) = flow_field.as_ref() else {
         return;
     };
 
@@ -39,10 +37,10 @@ pub fn move_with_flow_field(world: &mut World) {
             let max_speed_change = ENEMY_SPEED * 0.4; // Takes 5 ticks to completely change direction
             let pos = transform.translation.truncate();
             let idx = nav_grid.pos_to_index(pos);
+            #[cfg(feature = "navigation1")]
             let add_vel = flow_field.get(idx).copied().map_or_else(
                 || Vec2::ZERO,
                 |flow| {
-                    #[cfg(feature = "navigation1")]
                     if flow == Flow::Source {
                         (NavGridInner::index_to_pos(idx) - pos).normalize_or_zero()
                             * max_speed_change
@@ -51,18 +49,11 @@ pub fn move_with_flow_field(world: &mut World) {
                     } else {
                         flow.to_dir() * max_speed_change
                     }
-
-                    // #[cfg(feature = "navigation2")]
-                    // if flow == Flow::LineOfSight {
-                    //     let closest = flow_field.closest_target(pos).unwrap();
-                    //     (closest - pos).normalize_or_zero() * max_speed_change
-                    // } else if flow == Flow::None {
-                    //     Vec2::ZERO
-                    // } else {
-                    //     flow.to_dir() * max_speed_change
-                    // }
                 },
             );
+
+            #[cfg(feature = "navigation2")]
+            let add_vel = Vec2::ONE * 0.1;
 
             let new_vel = velocity.0 + add_vel;
 

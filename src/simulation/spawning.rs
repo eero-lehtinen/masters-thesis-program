@@ -76,16 +76,24 @@ fn spawn_enemies(
 fn despawn_on_target_enemies(
     target_q: Query<&Transform, With<Target>>,
     enemy_q: Query<(Entity, &Transform), With<Enemy>>,
-    nav_grid: Res<NavGrid>,
+    nav_grid: Option<Res<NavGrid>>,
+    nav_grid2: Option<Res<NavGrid>>,
     mut commands: Commands,
 ) {
+    let pos_to_index = |pos: Vec2| {
+        if let Some(nav_grid) = &nav_grid {
+            nav_grid.pos_to_index(pos)
+        } else {
+            nav_grid2.as_ref().unwrap().pos_to_index(pos)
+        }
+    };
     let target_indices = target_q
         .iter()
-        .map(|t| nav_grid.pos_to_index(t.translation.truncate()))
+        .map(|t| pos_to_index(t.translation.truncate()))
         .collect::<Vec<_>>();
 
     for (entity, transform) in enemy_q.iter() {
-        let nav_idx = nav_grid.pos_to_index(transform.translation.truncate());
+        let nav_idx = pos_to_index(transform.translation.truncate());
         if target_indices.contains(&nav_idx) {
             commands.entity(entity).despawn();
         }
