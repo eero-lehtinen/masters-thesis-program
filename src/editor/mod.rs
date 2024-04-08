@@ -1248,9 +1248,11 @@ fn save(world: &mut World) {
 
         let name = world
             .get_resource::<LevelPath>()
-            .map_or("unnamed.level".to_string(), |p| p.0.clone());
+            .map_or("unnamed".to_string(), |p| p.0.clone());
 
-        match save_level(world, &name) {
+        let file_name = format!("levels/{}.level", name);
+
+        match save_level(world, &file_name) {
             Ok(()) => {
                 world
                     .query_filtered::<(&mut HideAfter, &mut Visibility, &mut Text), With<SaveText>>(
