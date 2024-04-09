@@ -50,7 +50,7 @@ pub const ENEMY_RADIUS: f32 = 0.5;
 
 pub const MAX_ENEMIES: u32 = 10_000;
 
-const SPAWN_PER_TICK: u32 = 100;
+const SPAWN_PER_TICK: u32 = 300;
 
 fn spawn_enemies(
     spawn_point_q: Query<&Transform, With<SpawnPoint>>,

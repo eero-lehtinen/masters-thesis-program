@@ -12,7 +12,7 @@ impl Plugin for MovementPlugin {
     }
 }
 
-const ENEMY_SPEED: f32 = 6.;
+const ENEMY_SPEED: f32 = 4.;
 use super::navigation::{Flow, FlowField, NavGrid, NavGridInner};
 
 pub fn move_with_flow_field(world: &mut World) {

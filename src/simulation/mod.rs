@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
 use self::{
-    local_avoidance::LocalAvoidancePlugin, movement::MovementPlugin, navigation::NavigationPlugin,
+    flocking::FlockingPlugin, movement::MovementPlugin, navigation::NavigationPlugin,
     spawning::SpawningPlugin,
 };
 
 mod collision;
-mod local_avoidance;
+mod flocking;
 mod movement;
 
 #[cfg(navigation1)]
@@ -29,7 +29,7 @@ impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             MovementPlugin,
-            LocalAvoidancePlugin,
+            FlockingPlugin,
             NavigationPlugin {
                 update: self.update_nav,
             },

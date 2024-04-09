@@ -10,9 +10,9 @@ use super::{
 
 use crate::level::*;
 
-pub struct LocalAvoidancePlugin;
+pub struct FlockingPlugin;
 
-impl Plugin for LocalAvoidancePlugin {
+impl Plugin for FlockingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SpatialStructure>()
             .add_systems(Startup, init_spatial)
@@ -40,6 +40,7 @@ pub fn make_spatial(world: &mut World) {
     let start = Instant::now();
     spatial.reset();
     let elapsed = start.elapsed();
+
     enemy_q
         .iter()
         .for_each(|(entity, tr)| spatial.insert((entity, tr.translation.truncate())));
