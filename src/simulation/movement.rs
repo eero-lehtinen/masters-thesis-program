@@ -1,6 +1,5 @@
 use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
-use crate::simulation::navigation::NavGridInner;
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use super::{spawning::Enemy, SimulationSet};
@@ -14,7 +13,7 @@ impl Plugin for MovementPlugin {
 }
 
 const ENEMY_SPEED: f32 = 6.;
-use super::navigation::{Flow, FlowField, NavGrid};
+use super::navigation::{Flow, FlowField, NavGrid, NavGridInner};
 
 pub fn move_with_flow_field(world: &mut World) {
     let mut system_state: SystemState<(
@@ -37,7 +36,7 @@ pub fn move_with_flow_field(world: &mut World) {
             let max_speed_change = ENEMY_SPEED * 0.4; // Takes 5 ticks to completely change direction
             let pos = transform.translation.truncate();
             let idx = nav_grid.pos_to_index(pos);
-            #[cfg(feature = "navigation1")]
+            #[cfg(not(feature = "navigation2"))]
             let add_vel = flow_field.get(idx).copied().map_or_else(
                 || Vec2::ZERO,
                 |flow| {

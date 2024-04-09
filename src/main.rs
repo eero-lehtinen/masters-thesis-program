@@ -37,6 +37,11 @@ struct Cli {
     #[clap(short = 's', long)]
     level_size: Option<f32>,
 
+    /// Whether to update the navigation grid or just precalculate it.
+    /// Set to true only if benchmarking flow field generation is needed.
+    #[clap(long, default_value = "false")]
+    update_nav: bool,
+
     #[clap(subcommand)]
     command: Option<Command>,
 }
@@ -98,7 +103,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     if command != Command::Editor {
-        app.add_plugins((SimulationPlugin, StatisticsPlugin));
+        app.add_plugins((
+            SimulationPlugin {
+                update_nav: cli.update_nav,
+            },
+            StatisticsPlugin,
+        ));
     }
 
     app.add_plugins(LevelPlugin);

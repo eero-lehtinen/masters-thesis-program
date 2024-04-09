@@ -7,26 +7,26 @@ use bevy::{
     ecs::system::SystemState,
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task},
-    utils::{HashSet, Instant},
+    utils::Instant,
 };
 use futures_lite::future;
-use geo_types::Coordinate;
-use itertools::Itertools;
 use ndarray::Array2;
-use offset_polygon::offset_polygon;
-use std::{collections::VecDeque, f32::consts::SQRT_2, iter, sync::Arc, time::Duration};
+use std::{collections::VecDeque, f32::consts::SQRT_2, sync::Arc, time::Duration};
 
 use super::{spawning::ENEMY_RADIUS, SimulationSet};
 
 pub const NAV_SCALE: f32 = ENEMY_RADIUS;
 pub const NAV_SCALE_INV: f32 = 1. / NAV_SCALE;
 
-pub struct NavigationPlugin;
+pub struct NavigationPlugin {
+    pub update: bool,
+}
 
 impl Plugin for NavigationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FlowField>()
             .insert_resource(RunInTask(false))
+            .insert_resource(RunOnce(!self.update))
             .init_resource::<FlowFieldGenerate>()
             .add_systems(PreStartup, init_nav_grid.after(LevelStartupSet::Spawn))
             .add_systems(
@@ -37,6 +37,7 @@ impl Plugin for NavigationPlugin {
                         .chain()
                         .run_if(resource_equals(RunInTask(true))),
                 )
+                    .run_if(once)
                     .in_set(SimulationSet::GenNavigation),
             );
     }
@@ -44,6 +45,22 @@ impl Plugin for NavigationPlugin {
 
 #[derive(Resource, PartialEq, Eq)]
 struct RunInTask(bool);
+
+#[derive(Resource, PartialEq, Eq)]
+struct RunOnce(bool);
+
+fn once(run_once: Res<RunOnce>, mut once: Local<bool>) -> bool {
+    if !run_once.0 {
+        return true;
+    }
+
+    if !*once {
+        *once = true;
+        true
+    } else {
+        false
+    }
+}
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct NavGrid(pub Arc<NavGridInner>);
