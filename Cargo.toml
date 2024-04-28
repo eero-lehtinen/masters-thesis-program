@@ -7,6 +7,10 @@ edition = "2021"
 bench = []
 navigation1 = []
 navigation2 = []
+spatial_array = []
+spatial_kdtree = []
+spatial_kdbush = []
+spatial_quadtree = []
 
 [profile.dev]
 debug = 1
