@@ -9,14 +9,14 @@ mod collision;
 mod flocking;
 mod movement;
 
-#[cfg(navigation1)]
+// #[cfg(navigation1)]
 pub mod navigation;
-#[cfg(navigation2)]
-mod navigation2;
-#[cfg(navigation2)]
-pub mod navigation {
-    pub use super::navigation2::*;
-}
+// #[cfg(navigation2)]
+// mod navigation2;
+// #[cfg(navigation2)]
+// pub mod navigation {
+//     pub use super::navigation2::*;
+// }
 
 mod rng;
 pub mod spawning;

@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
-use std::fs::File;
+use std::{fs::File, thread, time::Duration};
 
 use bevy::{
     app::AppExit, core::FrameCount, prelude::*, time::TimePlugin, window::WindowResolution,
@@ -76,7 +76,7 @@ fn main() -> anyhow::Result<()> {
             app.add_plugins((
                 DefaultPlugins.set(WindowPlugin {
                     primary_window: Some(Window {
-                        resolution: WindowResolution::new(700., 700.),
+                        resolution: WindowResolution::new(1400., 800.),
                         present_mode: if command == Command::Editor {
                             bevy::window::PresentMode::AutoVsync
                         } else {
