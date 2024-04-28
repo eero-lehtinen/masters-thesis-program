@@ -61,11 +61,11 @@ fn print_stats(stats: Res<Statistics>) {
     for k in stats.0.keys().sorted() {
         let v = &stats.0[k];
         println!(
-            "{:16 }: avg {: <11}, median {: <11}, std {: <11}",
+            "{:16 }: mean {: <11}, std {: <11}, median {: <11}",
             k,
             as_ms(mean(v)),
+            as_ms(std(v)),
             as_ms(median(v)),
-            as_ms(std(v))
         );
     }
 }

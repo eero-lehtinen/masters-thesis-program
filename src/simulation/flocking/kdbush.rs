@@ -1,5 +1,6 @@
 use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
+use crate::simulation::spawning::MAX_ENEMIES;
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use crate::simulation::{
@@ -26,34 +27,37 @@ pub fn keep_distance_to_others(world: &mut World) {
     let start = Instant::now();
     let reset_elapsed = start.elapsed();
 
-    let positions = enemy_q
-        .iter()
-        .map(|(_, tr, _)| tr.translation.truncate().to_array())
-        .collect::<Vec<_>>();
-    spatial.tree = KdTree::build_by_ordered_float(positions);
+    spatial.tree = KDBush::new(MAX_ENEMIES as usize, 32);
+    enemy_q.iter().for_each(|(entity, tr, _)| {
+        let pos = tr.translation.truncate();
+        spatial
+            .tree
+            .add_point(entity.to_bits() as usize, pos.x as f64, pos.y as f64);
+    });
+    spatial.tree.build_index();
+
     let insert_elapsed = start.elapsed();
 
     let pref_dist = PREFERRED_DISTANCE;
 
-    for (_, mut translation, mut velocity) in enemy_q.iter_mut() {
+    for (entity, mut translation, mut velocity) in unsafe { enemy_q.iter_unsafe() } {
         let pos = translation.translation.truncate();
 
-        let (valid_neighbors, mut total_delta) = spatial
+        let mut valid_neighbors = 0;
+        let mut total_delta = Vec2::ZERO;
+        spatial
             .tree
-            .within_radius(&pos.to_array(), pref_dist)
-            .into_iter()
-            .map(|other_pos| {
-                let other_pos = Vec2::from(*other_pos);
+            .within(pos.x as f64, pos.y as f64, pref_dist as f64, |id| {
+                let other_entity = Entity::from_bits(id as u64);
+                let (_, tr, _) = enemy_q.get(other_entity).unwrap();
+                let other_pos = tr.translation.truncate();
                 let pos_delta = pos - other_pos;
                 let distance = pos_delta.length();
                 let distance_recip = (distance + SAFETY_MARGIN).recip();
-                let valid = i32::from(distance != 0.);
-                (
-                    valid,
-                    valid as f32 * pos_delta * (distance_recip * (pref_dist - distance)),
-                )
-            })
-            .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                let valid = i32::from(entity != other_entity);
+                valid_neighbors += valid;
+                total_delta += valid as f32 * pos_delta * (distance_recip * (pref_dist - distance));
+            });
 
         let jitter_remove_add = 3;
         total_delta /= (valid_neighbors + jitter_remove_add) as f32 * 0.5;
@@ -72,17 +76,17 @@ pub fn keep_distance_to_others(world: &mut World) {
     stats.add("avoidance", start.elapsed() - insert_elapsed);
 }
 
-use kd_tree::KdTree;
+use kdbush::KDBush;
 
-#[derive(Debug, Clone, Resource)]
+#[derive(Resource)]
 pub struct SpatialStructure {
-    tree: KdTree<[f32; 2]>,
+    tree: KDBush,
 }
 
 impl SpatialStructure {
     pub fn new() -> Self {
         SpatialStructure {
-            tree: KdTree::default(),
+            tree: KDBush::new(MAX_ENEMIES as usize, 32),
         }
     }
 }
