@@ -12,6 +12,7 @@ use crate::level::*;
 use super::{PREFERRED_DISTANCE, SAFETY_MARGIN};
 
 pub fn init(level: Res<Level>, mut commands: Commands) {
+    println!("USING: spatial array");
     commands.insert_resource(SpatialStructure::new(level.size));
 }
 

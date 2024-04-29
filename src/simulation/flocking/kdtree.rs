@@ -10,6 +10,7 @@ use crate::simulation::{
 use super::{PREFERRED_DISTANCE, SAFETY_MARGIN};
 
 pub fn init(mut commands: Commands) {
+    println!("USING: kdtree");
     commands.insert_resource(SpatialStructure::new());
 }
 
