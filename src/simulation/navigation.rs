@@ -1,5 +1,6 @@
 use crate::{
     level::{Level, LevelStartupSet, Target},
+    mouse_follow::MousePosition,
     statistics::Statistics,
     utils::{inflate_polygon, is_point_in_polygon, ToUsizeArr, ToVec2, Vertices},
 };
@@ -415,15 +416,26 @@ fn generate_flow_field_system(world: &mut World) {
         Res<NavGrid>,
         ResMut<FlowField>,
         Query<&Transform, With<Target>>,
+        Option<Res<MousePosition>>,
         ResMut<Statistics>,
     )> = SystemState::new(world);
-    let (nav_grid, mut flow_field, target_q, mut stats) = system_state.get_mut(world);
+    let (nav_grid, mut flow_field, target_q, mouse_pos, mut stats) = system_state.get_mut(world);
 
-    // When the last player dies, just continue going towards the latest corpse
-    let targets = target_q
-        .iter()
-        .map(|tr| nav_grid.pos_to_index(tr.translation.truncate()))
-        .collect::<Vec<_>>();
+    let mut targets = vec![];
+
+    if let Some(mouse_pos) = mouse_pos {
+        if let Some(mouse_pos) = mouse_pos.0 {
+            targets.push(nav_grid.pos_to_index(mouse_pos));
+        }
+    }
+
+    if targets.is_empty() {
+        targets.extend(
+            target_q
+                .iter()
+                .map(|tr| nav_grid.pos_to_index(tr.translation.truncate())),
+        );
+    }
 
     let (duration, flow_field_inner) = generate_flow_field_impl(Arc::clone(&nav_grid), targets);
     stats.add("flow_field", duration);

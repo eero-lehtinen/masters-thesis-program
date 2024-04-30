@@ -36,7 +36,7 @@ pub fn move_with_flow_field(world: &mut World) {
             let max_speed_change = ENEMY_SPEED * 0.4; // Takes 5 ticks to completely change direction
             let pos = transform.translation.truncate();
             let idx = nav_grid.pos_to_index(pos);
-            #[cfg(navigation1)]
+            // #[cfg(navigation1)]
             let add_vel = flow_field.get(idx).copied().map_or_else(
                 || Vec2::ZERO,
                 |flow| {
@@ -51,8 +51,8 @@ pub fn move_with_flow_field(world: &mut World) {
                 },
             );
 
-            #[cfg(navigation2)]
-            let add_vel = Vec2::ONE * 0.1;
+            // #[cfg(navigation2)]
+            // let add_vel = Vec2::ONE * 0.1;
 
             let new_vel = velocity.0 + add_vel;
 

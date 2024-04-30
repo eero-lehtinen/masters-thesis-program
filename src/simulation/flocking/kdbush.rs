@@ -17,7 +17,7 @@ pub fn init(mut commands: Commands) {
 
 pub fn keep_distance_to_others(world: &mut World) {
     let mut system_state: SystemState<(
-        Query<(Entity, &mut Transform, &mut Velocity), With<Enemy>>,
+        Query<(&mut Transform, &mut Velocity), With<Enemy>>,
         Res<NavGrid>,
         Res<FlowField>,
         ResMut<SpatialStructure>,
@@ -29,19 +29,22 @@ pub fn keep_distance_to_others(world: &mut World) {
     let reset_elapsed = start.elapsed();
 
     spatial.tree = KDBush::new(MAX_ENEMIES as usize, 32);
-    enemy_q.iter().for_each(|(entity, tr, _)| {
-        let pos = tr.translation.truncate();
-        spatial
-            .tree
-            .add_point(entity.to_bits() as usize, pos.x as f64, pos.y as f64);
-    });
+    let positions = enemy_q
+        .iter()
+        .enumerate()
+        .map(|(i, (tr, _))| {
+            let pos = tr.translation.truncate();
+            spatial.tree.add_point(i, pos.x as f64, pos.y as f64);
+            pos
+        })
+        .collect::<Vec<_>>();
     spatial.tree.build_index();
 
     let insert_elapsed = start.elapsed();
 
     let pref_dist = PREFERRED_DISTANCE;
 
-    for (entity, mut translation, mut velocity) in unsafe { enemy_q.iter_unsafe() } {
+    for (mut translation, mut velocity) in enemy_q.iter_mut() {
         let pos = translation.translation.truncate();
 
         let mut valid_neighbors = 0;
@@ -49,13 +52,11 @@ pub fn keep_distance_to_others(world: &mut World) {
         spatial
             .tree
             .within(pos.x as f64, pos.y as f64, pref_dist as f64, |id| {
-                let other_entity = Entity::from_bits(id as u64);
-                let (_, tr, _) = enemy_q.get(other_entity).unwrap();
-                let other_pos = tr.translation.truncate();
+                let other_pos = positions[id];
                 let pos_delta = pos - other_pos;
                 let distance = pos_delta.length();
                 let distance_recip = (distance + SAFETY_MARGIN).recip();
-                let valid = i32::from(entity != other_entity);
+                let valid = i32::from(pos_delta != Vec2::ZERO);
                 valid_neighbors += valid;
                 total_delta += valid as f32 * pos_delta * (distance_recip * (pref_dist - distance));
             });

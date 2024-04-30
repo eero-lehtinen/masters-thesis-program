@@ -1,4 +1,5 @@
 use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
+use itertools::Itertools;
 use kiddo::float::{distance::SquaredEuclidean, kdtree::KdTree};
 
 use crate::simulation::spawning::MAX_ENEMIES;
@@ -18,7 +19,7 @@ pub fn init(mut commands: Commands) {
 
 pub fn keep_distance_to_others(world: &mut World) {
     let mut system_state: SystemState<(
-        Query<(Entity, &mut Transform, &mut Velocity), With<Enemy>>,
+        Query<(&mut Transform, &mut Velocity), With<Enemy>>,
         Res<NavGrid>,
         Res<FlowField>,
         ResMut<SpatialStructure>,
@@ -30,30 +31,32 @@ pub fn keep_distance_to_others(world: &mut World) {
     let reset_elapsed = start.elapsed();
 
     spatial.tree = KdTree::with_capacity(enemy_q.iter().len());
-    enemy_q.iter().for_each(|(entity, tr, _)| {
-        let pos = tr.translation.truncate();
-        spatial.tree.add(&pos.to_array(), entity.to_bits());
-    });
+    let positions = enemy_q
+        .iter()
+        .enumerate()
+        .map(|(i, (tr, _))| {
+            let pos = tr.translation.truncate();
+            spatial.tree.add(&pos.to_array(), i);
+            pos
+        })
+        .collect_vec();
 
     let insert_elapsed = start.elapsed();
 
     let pref_dist = PREFERRED_DISTANCE;
 
-    for (entity, mut translation, mut velocity) in unsafe { enemy_q.iter_unsafe() } {
+    for (mut translation, mut velocity) in enemy_q.iter_mut() {
         let pos = translation.translation.truncate();
 
         let (valid_neighbors, mut total_delta) = spatial
             .tree
-            .nearest_n_within::<SquaredEuclidean>(&pos.to_array(), pref_dist, 10, false)
-            .into_iter()
+            .within_unsorted_iter::<SquaredEuclidean>(&pos.to_array(), pref_dist.powi(2))
             .map(|n| {
-                let other_entity = Entity::from_bits(n.item);
-                let (_, tr, _) = enemy_q.get(other_entity).unwrap();
-                let other_pos = tr.translation.truncate();
+                let other_pos = positions[n.item];
                 let pos_delta = pos - other_pos;
-                let distance = pos_delta.length();
+                let distance = n.distance.sqrt();
                 let distance_recip = (distance + SAFETY_MARGIN).recip();
-                let valid = i32::from(other_entity != entity && distance < pref_dist);
+                let valid = i32::from(pos_delta != Vec2::ZERO);
                 (
                     valid,
                     valid as f32 * pos_delta * (distance_recip * (pref_dist - distance)),
@@ -80,7 +83,7 @@ pub fn keep_distance_to_others(world: &mut World) {
 
 #[derive(Resource)]
 pub struct SpatialStructure {
-    tree: KdTree<f32, u64, 2, 32, u16>,
+    tree: KdTree<f32, usize, 2, 32, u16>,
 }
 
 impl SpatialStructure {

@@ -8,6 +8,7 @@ use bevy::{
 use bevy_framepace::{FramepacePlugin, FramepaceSettings, Limiter};
 use editor::EditorPlugin;
 use level::{Level, LevelPath, LevelPlugin};
+use mouse_follow::MouseFollowPlugin;
 use statistics::StatisticsPlugin;
 use visualization::VisualizationPlugin;
 
@@ -17,6 +18,7 @@ use clap::{Parser, Subcommand};
 
 mod editor;
 pub mod level;
+mod mouse_follow;
 pub mod simulation;
 pub mod statistics;
 pub mod utils;
@@ -93,9 +95,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     if command == Command::Viewer {
-        app.insert_resource(FramepaceSettings {
-            limiter: Limiter::from_framerate(FRAME_RATE as f64),
-        });
+        app.add_plugins(MouseFollowPlugin)
+            .insert_resource(FramepaceSettings {
+                limiter: Limiter::from_framerate(FRAME_RATE as f64),
+            });
     }
 
     if command == Command::Editor {
