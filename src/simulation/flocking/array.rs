@@ -1,5 +1,8 @@
 use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
+#[cfg(feature = "parallel")]
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use crate::simulation::{
@@ -24,7 +27,7 @@ pub fn keep_distance_to_others(world: &mut World) {
         ResMut<SpatialStructure>,
         ResMut<Statistics>,
     )> = SystemState::new(world);
-    let (mut enemy_q, nav_grid, flow_field, mut spatial, mut stats) = system_state.get_mut(world);
+    let (enemy_q, nav_grid, flow_field, mut spatial, mut stats) = system_state.get_mut(world);
 
     let start = Instant::now();
     spatial.reset();
@@ -37,39 +40,67 @@ pub fn keep_distance_to_others(world: &mut World) {
 
     let pref_dist = PREFERRED_DISTANCE;
 
-    spatial
-        .grid
-        .iter()
-        .enumerate()
+    #[cfg(not(feature = "parallel"))]
+    let iter = spatial.grid.iter();
+    #[cfg(feature = "parallel")]
+    let iter = spatial.grid.par_iter();
+    iter.enumerate()
         .filter(|(_, items)| !items.is_empty())
         .for_each(|(cell, items)| {
             let Some(neighbors) = spatial.get(cell) else {
                 return;
             };
             for &(entity, pos) in items {
-                let Ok((_, mut translation, mut velocity)) = enemy_q.get_mut(entity) else {
+                let Ok((_, mut translation, mut velocity)) =
+                    (unsafe { enemy_q.get_unchecked(entity) })
+                else {
                     continue;
                 };
 
-                let (valid_neighbors, mut total_delta) = neighbors
-                    .iter()
-                    .flat_map(|v| v.iter())
-                    .map(|&(other_entity, other_pos)| {
-                        let pos_delta = pos - other_pos;
-                        let distance = pos_delta.length();
-                        // Make sure that recip doesn't return infinity or very large values by adding a number.
-                        let distance_recip = (distance + SAFETY_MARGIN).recip();
-                        let valid = i32::from(other_entity != entity && distance < pref_dist);
-                        (
-                            valid,
-                            valid as f32 * pos_delta * (distance_recip * (pref_dist - distance)),
-                        )
-                    })
-                    .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                #[cfg(not(feature = "distance_func2"))]
+                let total_delta = {
+                    let (valid_neighbors, mut total_delta) = neighbors
+                        .iter()
+                        .flat_map(|v| v.iter())
+                        .map(|&(other_entity, other_pos)| {
+                            let pos_delta = pos - other_pos;
+                            let distance = pos_delta.length();
+                            let distance_recip = (distance + SAFETY_MARGIN).recip();
 
-                let jitter_remove_add = 3;
-                total_delta /= (valid_neighbors + jitter_remove_add) as f32 * 0.5;
+                            // basically does this (pref_dist - distance) * pos_delta.normalize();
+                            let value = (pref_dist - distance) * distance_recip * pos_delta;
+                            // (pref_dist - distance) * (pos_delta + SAFETY_MARGIN).normalize();
+                            let valid = i32::from(other_entity != entity && distance < pref_dist);
 
+                            (valid, valid as f32 * value)
+                        })
+                        .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+
+                    total_delta /= (valid_neighbors + 3) as f32 * 0.5;
+                    total_delta
+                };
+
+                #[cfg(feature = "distance_func2")]
+                let total_delta = {
+                    let (valid_neighbors, mut total_delta) = neighbors
+                        .iter()
+                        .flat_map(|v| v.iter())
+                        .map(|&(other_entity, other_pos)| {
+                            let pos_delta = pos - other_pos;
+                            let distance = pos_delta.length();
+                            let distance_recip = (distance + SAFETY_MARGIN).recip();
+
+                            let value =
+                                (pref_dist - distance).powi(2) * distance_recip * pos_delta * 2.;
+                            let valid = i32::from(other_entity != entity && distance < pref_dist);
+
+                            (valid, valid as f32 * value)
+                        })
+                        .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+
+                    total_delta /= valid_neighbors as f32;
+                    total_delta
+                };
                 if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
                     if *flow != Flow::None {
                         translation.translation.x += total_delta.x;

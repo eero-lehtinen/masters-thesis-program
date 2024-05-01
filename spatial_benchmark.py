@@ -5,6 +5,7 @@ import json
 LEVELS = ["1-Empty", "2-Labyrinth", "3-Cathedral", "4-Centipedetown"]
 FEATURES = [
     "spatial_array",
+    ["spatial_array", "parallel"],
     "spatial_hash",
     "spatial_kdtree",
     # "spatial_kdtree_kiddo",
@@ -24,6 +25,10 @@ def main():
 
         for level in LEVELS:
             print(f"Running level {level}")
+            
+            if isinstance(feature, list):
+                feature = ",".join(feature)
+
             subprocess.run(["cargo", "run", "--release", "--features", feature, "--", "--level", level, "bench"], check=True)
             stats_file = Path(f"statistics.json")
             with stats_file.open() as f:

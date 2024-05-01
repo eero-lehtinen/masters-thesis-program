@@ -35,5 +35,9 @@ impl Plugin for FlockingPlugin {
     }
 }
 
+#[cfg(not(feature = "distance_func2"))]
 const PREFERRED_DISTANCE: f32 = ENEMY_RADIUS * 1.5;
+#[cfg(feature = "distance_func2")]
+const PREFERRED_DISTANCE: f32 = ENEMY_RADIUS * 2.;
+
 const SAFETY_MARGIN: f32 = 0.0001;
