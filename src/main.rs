@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
-use std::{fs::File, thread, time::Duration};
+use std::fs::File;
 
 use bevy::{
     app::AppExit, core::FrameCount, prelude::*, time::TimePlugin, window::WindowResolution,

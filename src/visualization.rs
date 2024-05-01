@@ -433,49 +433,49 @@ fn draw_flow_field_gizmos_nav1(
 //         });
 // }
 
-fn draw_flow_field_gizmos_nav2(
-    flow_field: Res<FlowField>,
-    nav_grid: Res<NavGrid>,
-    mut gizmos: Gizmos,
-    camera_q: Query<&Transform, With<Camera>>,
-) {
-    // let camera_tr = camera_q.single();
-    // let camera_pos_index = nav_grid.pos_to_index(camera_tr.translation.truncate());
-    //
-    // let cx = camera_pos_index[0];
-    // let cy = camera_pos_index[1];
-    //
-    // let extent = 140;
-    //
-    // let (width, height) = flow_field.0.dim();
-    //
-    // let range_x = cx.saturating_sub(extent)..(cx + extent).min(width);
-    // let range_y = cy.saturating_sub(extent)..(cy + extent).min(height);
-    //
-    // // Draw flow field
-    // for x in range_x.clone() {
-    //     for y in range_y.clone() {
-    //         let (_, flow) = flow_field.0[[x, y]];
-    //         let pos = NavGridInner::index_to_pos([x, y]);
-    //         if flow == Flow::None {
-    //             gizmos.line_2d(
-    //                 pos - Vec2::new(0.0, 0.1),
-    //                 pos + Vec2::new(0.0, 0.1),
-    //                 Color::RED,
-    //             );
-    //             continue;
-    //         }
-    //
-    //         if flow == Flow::Source {
-    //             draw_gizmo_cross(&mut gizmos, pos, Color::BLACK, NAV_SCALE);
-    //             continue;
-    //         }
-    //
-    //         let dir = flow.to_dir() * 0.45 * NAV_SCALE;
-    //         gizmo_arrow(&mut gizmos, pos - dir, pos + dir, Color::BLACK);
-    //     }
-    // }
-}
+// fn draw_flow_field_gizmos_nav2(
+//     flow_field: Res<FlowField>,
+//     nav_grid: Res<NavGrid>,
+//     mut gizmos: Gizmos,
+//     camera_q: Query<&Transform, With<Camera>>,
+// ) {
+// let camera_tr = camera_q.single();
+// let camera_pos_index = nav_grid.pos_to_index(camera_tr.translation.truncate());
+//
+// let cx = camera_pos_index[0];
+// let cy = camera_pos_index[1];
+//
+// let extent = 140;
+//
+// let (width, height) = flow_field.0.dim();
+//
+// let range_x = cx.saturating_sub(extent)..(cx + extent).min(width);
+// let range_y = cy.saturating_sub(extent)..(cy + extent).min(height);
+//
+// // Draw flow field
+// for x in range_x.clone() {
+//     for y in range_y.clone() {
+//         let (_, flow) = flow_field.0[[x, y]];
+//         let pos = NavGridInner::index_to_pos([x, y]);
+//         if flow == Flow::None {
+//             gizmos.line_2d(
+//                 pos - Vec2::new(0.0, 0.1),
+//                 pos + Vec2::new(0.0, 0.1),
+//                 Color::RED,
+//             );
+//             continue;
+//         }
+//
+//         if flow == Flow::Source {
+//             draw_gizmo_cross(&mut gizmos, pos, Color::BLACK, NAV_SCALE);
+//             continue;
+//         }
+//
+//         let dir = flow.to_dir() * 0.45 * NAV_SCALE;
+//         gizmo_arrow(&mut gizmos, pos - dir, pos + dir, Color::BLACK);
+//     }
+// }
+// }
 
 fn gizmo_arrow(gizmos: &mut Gizmos, from: Vec2, to: Vec2, color: Color) {
     gizmos.line_2d(from, to, color);

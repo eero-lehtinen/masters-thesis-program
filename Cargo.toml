@@ -7,6 +7,12 @@ edition = "2021"
 bench = []
 navigation1 = []
 navigation2 = []
+spatial_array = []
+spatial_hash = []
+spatial_kdtree = []
+spatial_kdtree_kiddo = []
+spatial_kdbush = []
+spatial_rstar = []
 
 [profile.dev]
 debug = 1
@@ -16,8 +22,8 @@ debug = 1
 opt-level = 3
 debug = false
 
-[profile.release]
-incremental = true
+# [profile.release]
+# incremental = true
 
 [dependencies]
 bevy = "0.13.1"
@@ -50,6 +56,7 @@ kd-tree = "0.6.0"
 kdbush = "0.2.0"
 kiddo = "4.2.0"
 rstar = "0.12.0"
+cfg-if = "1.0.0"
 
 [build-dependencies]
 cfg_aliases = "0.2.0"

@@ -50,7 +50,7 @@ pub fn keep_distance_to_others(world: &mut World) {
 
         let (valid_neighbors, mut total_delta) = spatial
             .tree
-            .within_unsorted_iter::<SquaredEuclidean>(&pos.to_array(), pref_dist.powi(2))
+            .within_unsorted_iter::<SquaredEuclidean>(&pos.to_array(), pref_dist)
             .map(|n| {
                 let other_pos = positions[n.item];
                 let pos_delta = pos - other_pos;

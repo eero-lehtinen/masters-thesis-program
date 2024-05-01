@@ -3535,6 +3535,7 @@ dependencies = [
  "bevy_pancam",
  "bevy_rapier2d",
  "bitflags 2.5.0",
+ "cfg-if",
  "cfg_aliases 0.2.0",
  "clap",
  "earcutr",

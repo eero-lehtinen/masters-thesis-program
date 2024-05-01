@@ -85,65 +85,65 @@ fn write_statistics(stats: Res<Statistics>) {
 
     print_stats(stats);
 
-    plot_stats(stats_f64).unwrap();
+    // plot_stats(stats_f64).unwrap();
 }
 
-use plotters::{prelude::*, style::Color};
+// use plotters::{prelude::*, style::Color};
 
-const COLORS: [RGBColor; 6] = [
-    RGBColor(11, 132, 165),
-    RGBColor(111, 78, 124),
-    RGBColor(157, 216, 102),
-    RGBColor(202, 71, 47),
-    RGBColor(255, 160, 86),
-    RGBColor(141, 221, 208),
-];
-
-fn plot_stats(stats: HashMap<&str, Vec<f64>>) -> anyhow::Result<()> {
-    let root = BitMapBackend::new("plot.png", (800, 480)).into_drawing_area();
-    root.fill(&WHITE)?;
-
-    let width = stats.iter().next().unwrap().1.len();
-
-    let max = *stats
-        .values()
-        .map(|v| v.iter().max_by(|a, b| a.total_cmp(b)).unwrap())
-        .max_by(|a, b| a.total_cmp(b))
-        .unwrap();
-
-    let min = *stats
-        .values()
-        .map(|v| v.iter().min_by(|a, b| a.total_cmp(b)).unwrap())
-        .min_by(|a, b| a.total_cmp(b))
-        .unwrap();
-
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Stats", ("sans-serif", 20).into_font())
-        .margin(5)
-        .x_label_area_size(30)
-        .y_label_area_size(30)
-        .build_cartesian_2d(0..width, min..max)?;
-
-    chart.configure_mesh().draw()?;
-
-    for (i, (name, values)) in stats.iter().sorted_by_key(|(k, _)| *k).enumerate() {
-        let color = COLORS[i];
-        chart
-            .draw_series(LineSeries::new(
-                values.iter().enumerate().map(|(i, v)| (i, *v)),
-                color,
-            ))?
-            .label(*name)
-            .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color));
-    }
-
-    chart
-        .configure_series_labels()
-        .background_style(WHITE.mix(0.8))
-        .border_style(BLACK)
-        .draw()?;
-
-    root.present()?;
-
-    Ok(())
-}
+// const COLORS: [RGBColor; 6] = [
+//     RGBColor(11, 132, 165),
+//     RGBColor(111, 78, 124),
+//     RGBColor(157, 216, 102),
+//     RGBColor(202, 71, 47),
+//     RGBColor(255, 160, 86),
+//     RGBColor(141, 221, 208),
+// ];
+//
+// fn plot_stats(stats: HashMap<&str, Vec<f64>>) -> anyhow::Result<()> {
+//     let root = BitMapBackend::new("plot.png", (800, 480)).into_drawing_area();
+//     root.fill(&WHITE)?;
+//
+//     let width = stats.iter().next().unwrap().1.len();
+//
+//     let max = *stats
+//         .values()
+//         .map(|v| v.iter().max_by(|a, b| a.total_cmp(b)).unwrap())
+//         .max_by(|a, b| a.total_cmp(b))
+//         .unwrap();
+//
+//     let min = *stats
+//         .values()
+//         .map(|v| v.iter().min_by(|a, b| a.total_cmp(b)).unwrap())
+//         .min_by(|a, b| a.total_cmp(b))
+//         .unwrap();
+//
+//     let mut chart = ChartBuilder::on(&root)
+//         .caption("Stats", ("sans-serif", 20).into_font())
+//         .margin(5)
+//         .x_label_area_size(30)
+//         .y_label_area_size(30)
+//         .build_cartesian_2d(0..width, min..max)?;
+//
+//     chart.configure_mesh().draw()?;
+//
+//     for (i, (name, values)) in stats.iter().sorted_by_key(|(k, _)| *k).enumerate() {
+//         let color = COLORS[i];
+//         chart
+//             .draw_series(LineSeries::new(
+//                 values.iter().enumerate().map(|(i, v)| (i, *v)),
+//                 color,
+//             ))?
+//             .label(*name)
+//             .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color));
+//     }
+//
+//     chart
+//         .configure_series_labels()
+//         .background_style(WHITE.mix(0.8))
+//         .border_style(BLACK)
+//         .draw()?;
+//
+//     root.present()?;
+//
+//     Ok(())
+// }
