@@ -12,8 +12,12 @@ use bevy::prelude::*;
 // mod kdtree_kiddo;
 // use kdtree_kiddo::{init, keep_distance_to_others};
 
-mod kdbush;
-use kdbush::{init, keep_distance_to_others};
+// mod kdbush;
+// use kdbush::{init, keep_distance_to_others};
+//
+
+mod rstar;
+use rstar::{init, keep_distance_to_others};
 
 use super::{spawning::ENEMY_RADIUS, SimulationSet};
 

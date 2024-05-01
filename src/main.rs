@@ -53,7 +53,7 @@ enum Command {
     Viewer,
     Editor,
     Bench {
-        #[clap(short, long, default_value = "500")]
+        #[clap(short, long, default_value = "1000")]
         ticks: u32,
     },
 }

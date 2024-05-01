@@ -49,6 +49,7 @@ bevy_framepace = "0.15.0"
 kd-tree = "0.6.0"
 kdbush = "0.2.0"
 kiddo = "4.2.0"
+rstar = "0.12.0"
 
 [build-dependencies]
 cfg_aliases = "0.2.0"
