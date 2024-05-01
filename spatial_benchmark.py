@@ -4,6 +4,7 @@ import json
 
 LEVELS = ["1-Empty", "2-Labyrinth", "3-Cathedral", "4-Centipedetown"]
 FEATURES = [
+    "spatial_array",
     "spatial_hash",
     "spatial_kdtree",
     # "spatial_kdtree_kiddo",
