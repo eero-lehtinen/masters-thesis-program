@@ -15,6 +15,7 @@ spatial_kdbush = []
 spatial_rstar = []
 parallel = []
 distance_func2 = []
+branchless = []
 
 [profile.dev]
 debug = 1

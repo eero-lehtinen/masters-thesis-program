@@ -82,25 +82,48 @@ pub fn keep_distance_to_others(world: &mut World) {
 
                 #[cfg(feature = "distance_func2")]
                 let total_delta = {
-                    let (valid_neighbors, mut total_delta) = neighbors
-                        .iter()
-                        .flat_map(|v| v.iter())
-                        .map(|&(other_entity, other_pos)| {
-                            let pos_delta = pos - other_pos;
-                            let distance = pos_delta.length();
-                            let distance_recip = (distance + SAFETY_MARGIN).recip();
+                    #[cfg(feature = "branchless")]
+                    {
+                        let (valid_neighbors, mut total_delta) = neighbors
+                            .iter()
+                            .flat_map(|v| v.iter())
+                            .map(|&(other_entity, other_pos)| {
+                                let pos_delta = pos - other_pos;
+                                let distance = pos_delta.length();
+                                let magnitude = (pref_dist - distance).powi(2);
+                                let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                                let force = magnitude * direction;
+                                let valid =
+                                    i32::from(other_entity != entity && distance < pref_dist);
+                                (valid, valid as f32 * force)
+                            })
+                            .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                        total_delta /= valid_neighbors as f32;
+                        total_delta * 2.
+                    }
 
-                            let value =
-                                (pref_dist - distance).powi(2) * distance_recip * pos_delta * 2.;
-                            let valid = i32::from(other_entity != entity && distance < pref_dist);
-
-                            (valid, valid as f32 * value)
-                        })
-                        .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
-
-                    total_delta /= valid_neighbors as f32;
-                    total_delta
+                    #[cfg(not(feature = "branchless"))]
+                    {
+                        let mut total_force = Vec2::ZERO;
+                        let mut valid_neighbors = 0;
+                        for &(other_entity, other_pos) in neighbors.iter().flat_map(|v| v.iter()) {
+                            if other_entity == entity {
+                                continue;
+                            }
+                            let diff = pos - other_pos;
+                            let distance = diff.length();
+                            if distance < pref_dist {
+                                let magnitude = (pref_dist - distance).powi(2);
+                                let direction = 1. / distance * diff;
+                                total_force += magnitude * direction;
+                                valid_neighbors += 1;
+                            }
+                        }
+                        total_force /= valid_neighbors as f32;
+                        total_force * 2.
+                    }
                 };
+
                 if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
                     if *flow != Flow::None {
                         translation.translation.x += total_delta.x;
