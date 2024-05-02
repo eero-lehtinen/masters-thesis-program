@@ -18,9 +18,10 @@ FEATURES = [
     ["distance_func2", "branchless"],
 ]
 
-# FEATURES = [
-#     "",
-# ]
+FEATURES = [
+    ["distance_func2", "branchless"],
+    ["distance_func2", "branchless", "floatneighbors"],
+]
 
 
 def main():

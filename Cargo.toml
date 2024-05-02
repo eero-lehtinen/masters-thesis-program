@@ -16,6 +16,7 @@ spatial_rstar = []
 parallel = []
 distance_func2 = []
 branchless = []
+floatneighbors = []
 
 [profile.dev]
 debug = 1
