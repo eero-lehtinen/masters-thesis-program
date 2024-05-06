@@ -64,7 +64,9 @@ fn spawn_enemies(
     *count += SPAWN_PER_TICK;
 
     for _ in 0..SPAWN_PER_TICK {
-        let spawn_point = spawn_point_q.iter().choose(&mut rng.0).unwrap();
+        let Some(spawn_point) = spawn_point_q.iter().choose(&mut rng.0) else {
+            return;
+        };
 
         commands.spawn(EnemyBundle::new(
             spawn_point.translation.truncate(),

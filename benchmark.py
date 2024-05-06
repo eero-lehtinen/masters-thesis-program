@@ -1,31 +1,41 @@
 import subprocess
 from pathlib import Path
 import json
+import sys
 
 LEVELS = ["1-Empty", "2-Labyrinth", "3-Cathedral", "4-Centipedetown"]
+
+FEATURES = {
+    "spatial": [
+        ["spatial_array", "branchless", "floatneighbors", "no_id_check"],
+        "spatial_hash",
+        "spatial_kdtree",
+        # "spatial_kdtree_kiddo",
+        "spatial_kdbush",
+        "spatial_rstar",
+    ],
+    "optimize": [
+        # ["distance_func2"],
+        # ["distance_func2", "branchless"],
+        # ["distance_func2", "branchless", "floatneighbors"],
+        ["distance_func2", "branchless", "floatneighbors", "no_id_check"],
+    ],
+    "test": [],
+}
+
 # FEATURES = [
-#     "spatial_array",
-#     ["spatial_array", "parallel"],
-#     "spatial_hash",
-#     "spatial_kdtree",
-#     # "spatial_kdtree_kiddo",
-#     "spatial_kdbush",
-#     "spatial_rstar",
+#     "distance_func2",
+#     ["distance_func2", "branchless"],
+# ]
+#
+# FEATURES = [
+#     ["distance_func2", "branchless"],
+#     ["distance_func2", "branchless", "floatneighbors"],
 # ]
 
-FEATURES = [
-    "distance_func2",
-    ["distance_func2", "branchless"],
-]
 
-FEATURES = [
-    ["distance_func2", "branchless"],
-    ["distance_func2", "branchless", "floatneighbors"],
-]
-
-
-def main():
-    for feature in FEATURES:
+def main(feature_key="test"):
+    for feature in FEATURES[feature_key]:
         statistics = {
             "spatial_reset": [],
             "spatial_insert": [],
@@ -69,4 +79,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        arg = "test"
+    else:
+        arg = sys.argv[1]
+
+    main(arg)

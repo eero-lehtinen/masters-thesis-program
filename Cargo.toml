@@ -17,6 +17,7 @@ parallel = []
 distance_func2 = []
 branchless = []
 floatneighbors = []
+no_id_check = []
 
 [profile.dev]
 debug = 1

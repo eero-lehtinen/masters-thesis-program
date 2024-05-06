@@ -82,65 +82,77 @@ pub fn keep_distance_to_others(world: &mut World) {
 
                 #[cfg(feature = "distance_func2")]
                 let total_delta = {
-                    #[cfg(not(feature = "branchless"))]
-                    {
-                        let mut total_force = Vec2::ZERO;
-                        let mut valid_neighbors = 0;
-                        for &(other_entity, other_pos) in neighbors.iter().flat_map(|v| v.iter()) {
-                            if other_entity == entity {
-                                continue;
+                    cfg_if::cfg_if!{
+                        if #[cfg(all(feature = "branchless", feature = "floatneighbors", feature = "no_id_check"))] {
+                            let (valid_neighbors, mut total_delta) = neighbors
+                                .iter()
+                                .flat_map(|v| v.iter())
+                                .map(|&(_, other_pos)| {
+                                    let pos_delta = pos - other_pos;
+                                    let distance = pos_delta.length();
+                                    let magnitude = (pref_dist - distance).powi(2);
+                                    let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                                    let force = magnitude * direction;
+                                    let valid =
+                                        f32::from(distance != 0. && distance < pref_dist);
+                                    (valid, valid * force)
+                                })
+                                .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                            total_delta /= valid_neighbors;
+                            total_delta * 2.
+                        } else if #[cfg(all(feature = "branchless", feature = "floatneighbors"))] {
+                            let (valid_neighbors, mut total_delta) = neighbors
+                                .iter()
+                                .flat_map(|v| v.iter())
+                                .map(|&(other_entity, other_pos)| {
+                                    let pos_delta = pos - other_pos;
+                                    let distance = pos_delta.length();
+                                    let magnitude = (pref_dist - distance).powi(2);
+                                    let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                                    let force = magnitude * direction;
+                                    let valid =
+                                        f32::from(other_entity != entity && distance < pref_dist);
+                                    (valid, valid * force)
+                                })
+                                .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                            total_delta /= valid_neighbors;
+                            total_delta * 2.
+                        } else if #[cfg(feature = "branchless")] {
+                             let (valid_neighbors, mut total_delta) = neighbors
+                                .iter()
+                                .flat_map(|v| v.iter())
+                                .map(|&(other_entity, other_pos)| {
+                                    let pos_delta = pos - other_pos;
+                                    let distance = pos_delta.length();
+                                    let magnitude = (pref_dist - distance).powi(2);
+                                    let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                                    let force = magnitude * direction;
+                                    let valid =
+                                        i32::from(other_entity != entity && distance < pref_dist);
+                                    (valid, valid as f32 * force)
+                                })
+                                .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                            total_delta /= valid_neighbors as f32;
+                            total_delta * 2.
+                        } else {
+                            let mut total_force = Vec2::ZERO;
+                            let mut valid_neighbors = 0;
+                            for &(other_entity, other_pos) in neighbors.iter().flat_map(|v| v.iter()) {
+                                if other_entity == entity {
+                                    continue;
+                                }
+                                let diff = pos - other_pos;
+                                let distance = diff.length();
+                                if distance < pref_dist {
+                                    let magnitude = (pref_dist - distance).powi(2);
+                                    let direction = 1. / distance * diff;
+                                    total_force += magnitude * direction;
+                                    valid_neighbors += 1;
+                                }
                             }
-                            let diff = pos - other_pos;
-                            let distance = diff.length();
-                            if distance < pref_dist {
-                                let magnitude = (pref_dist - distance).powi(2);
-                                let direction = 1. / distance * diff;
-                                total_force += magnitude * direction;
-                                valid_neighbors += 1;
-                            }
+                            total_force /= valid_neighbors as f32;
+                            total_force * 2.
                         }
-                        total_force /= valid_neighbors as f32;
-                        total_force * 2.
-                    }
-
-                    #[cfg(all(feature = "branchless", not(feature = "floatneighbors")))]
-                    {
-                        let (valid_neighbors, mut total_delta) = neighbors
-                            .iter()
-                            .flat_map(|v| v.iter())
-                            .map(|&(other_entity, other_pos)| {
-                                let pos_delta = pos - other_pos;
-                                let distance = pos_delta.length();
-                                let magnitude = (pref_dist - distance).powi(2);
-                                let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
-                                let force = magnitude * direction;
-                                let valid =
-                                    i32::from(other_entity != entity && distance < pref_dist);
-                                (valid, valid as f32 * force)
-                            })
-                            .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
-                        total_delta /= valid_neighbors as f32;
-                        total_delta * 2.
-                    }
-
-                    #[cfg(all(feature = "branchless", feature = "floatneighbors"))]
-                    {
-                        let (valid_neighbors, mut total_delta) = neighbors
-                            .iter()
-                            .flat_map(|v| v.iter())
-                            .map(|&(other_entity, other_pos)| {
-                                let pos_delta = pos - other_pos;
-                                let distance = pos_delta.length();
-                                let magnitude = (pref_dist - distance).powi(2);
-                                let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
-                                let force = magnitude * direction;
-                                let valid =
-                                    f32::from(other_entity != entity && distance < pref_dist);
-                                (valid, valid * force)
-                            })
-                            .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
-                        total_delta /= valid_neighbors;
-                        total_delta * 2.
                     }
                 };
 
