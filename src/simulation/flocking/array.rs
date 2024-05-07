@@ -31,12 +31,10 @@ pub fn keep_distance_to_others(world: &mut World) {
 
     let start = Instant::now();
     spatial.reset();
-    let reset_elapsed = start.elapsed();
 
     enemy_q
         .iter()
         .for_each(|(entity, tr, _)| spatial.insert((entity, tr.translation.truncate())));
-    let insert_elapsed = start.elapsed();
 
     let pref_dist = PREFERRED_DISTANCE;
 
@@ -44,6 +42,8 @@ pub fn keep_distance_to_others(world: &mut World) {
     let iter = spatial.grid.iter();
     #[cfg(feature = "parallel")]
     let iter = spatial.grid.par_iter();
+
+    #[cfg(not(feature = "no_id_check"))]
     iter.enumerate()
         .filter(|(_, items)| !items.is_empty())
         .for_each(|(cell, items)| {
@@ -83,24 +83,7 @@ pub fn keep_distance_to_others(world: &mut World) {
                 #[cfg(feature = "distance_func2")]
                 let total_delta = {
                     cfg_if::cfg_if!{
-                        if #[cfg(all(feature = "branchless", feature = "floatneighbors", feature = "no_id_check"))] {
-                            let (valid_neighbors, mut total_delta) = neighbors
-                                .iter()
-                                .flat_map(|v| v.iter())
-                                .map(|&(_, other_pos)| {
-                                    let pos_delta = pos - other_pos;
-                                    let distance = pos_delta.length();
-                                    let magnitude = (pref_dist - distance).powi(2);
-                                    let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
-                                    let force = magnitude * direction;
-                                    let valid =
-                                        f32::from(distance != 0. && distance < pref_dist);
-                                    (valid, valid * force)
-                                })
-                                .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
-                            total_delta /= valid_neighbors;
-                            total_delta * 2.
-                        } else if #[cfg(all(feature = "branchless", feature = "floatneighbors"))] {
+                         if #[cfg(all(feature = "branchless", feature = "floatneighbors"))] {
                             let (valid_neighbors, mut total_delta) = neighbors
                                 .iter()
                                 .flat_map(|v| v.iter())
@@ -165,9 +148,47 @@ pub fn keep_distance_to_others(world: &mut World) {
                 }
             }
         });
-    stats.add("spatial_reset", reset_elapsed);
-    stats.add("spatial_insert", insert_elapsed - reset_elapsed);
-    stats.add("avoidance", start.elapsed() - insert_elapsed);
+
+    #[cfg(feature = "no_id_check")]
+    iter.enumerate()
+        .filter(|(_, items)| !items.0.is_empty())
+        .for_each(|(cell, items)| {
+            let Some(neighbors) = spatial.get(cell) else {
+                return;
+            };
+            for (&entity, &pos) in items.0.iter().zip(items.1.iter()) {
+                let Ok((_, mut translation, mut velocity)) =
+                    (unsafe { enemy_q.get_unchecked(entity) })
+                else {
+                    continue;
+                };
+
+                let (valid_neighbors, mut total_delta) = neighbors
+                    .iter()
+                    .flat_map(|v| v.iter())
+                    .map(|&other_pos| {
+                        let pos_delta = pos - other_pos;
+                        let distance = pos_delta.length();
+                        let magnitude = (pref_dist - distance).powi(2);
+                        let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                        let force = magnitude * direction;
+                        let valid = f32::from(distance > 0. && distance < pref_dist);
+                        (valid, valid * force)
+                    })
+                    .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+                total_delta /= valid_neighbors;
+                total_delta *= 2.;
+
+                if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
+                    if *flow != Flow::None {
+                        translation.translation.x += total_delta.x;
+                        translation.translation.y += total_delta.y;
+                        velocity.0 += total_delta / DELTA_TIME;
+                    }
+                }
+            }
+        });
+    stats.add("flocking", start.elapsed());
 }
 
 const SPATIAL_CELL_SIZE: f32 = PREFERRED_DISTANCE;
@@ -177,7 +198,10 @@ const SPATIAL_CELL_SIZE_INV: f32 = 1.0 / SPATIAL_CELL_SIZE;
 pub struct SpatialStructure {
     level_size: f32,
     size: usize,
+    #[cfg(not(feature = "no_id_check"))]
     pub grid: Vec<Vec<(Entity, Vec2)>>,
+    #[cfg(feature = "no_id_check")]
+    pub grid: Vec<(Vec<Entity>, Vec<Vec2>)>,
 }
 
 const DEFAULT_CELL_CAPACITY: usize = 16;
@@ -188,22 +212,45 @@ impl SpatialStructure {
         Self {
             level_size,
             size,
+            #[cfg(not(feature = "no_id_check"))]
             grid: vec![Vec::with_capacity(DEFAULT_CELL_CAPACITY); size * size],
+            #[cfg(feature = "no_id_check")]
+            grid: vec![
+                (
+                    Vec::with_capacity(DEFAULT_CELL_CAPACITY),
+                    Vec::with_capacity(DEFAULT_CELL_CAPACITY)
+                );
+                size * size
+            ],
         }
     }
 
     pub fn reset(&mut self) {
-        self.grid.iter_mut().for_each(Vec::clear);
+        #[cfg(not(feature = "no_id_check"))]
+        self.grid.iter_mut().for_each(|a| a.clear());
+
+        #[cfg(feature = "no_id_check")]
+        self.grid.iter_mut().for_each(|(a, b)| {
+            a.clear();
+            b.clear();
+        });
     }
 
     pub fn insert(&mut self, (entity, pos): (Entity, Vec2)) {
         let cell = self.pos_to_cell(pos);
         let a = unsafe { self.grid.get_unchecked_mut(cell) };
+        #[cfg(not(feature = "no_id_check"))]
         if a.len() < 100 {
             a.push((entity, pos));
         }
+        #[cfg(feature = "no_id_check")]
+        if a.0.len() < 100 {
+            a.0.push(entity);
+            a.1.push(pos);
+        }
     }
 
+    #[cfg(not(feature = "no_id_check"))]
     pub fn get(&self, cell: usize) -> Option<[&[(Entity, Vec2)]; 9]> {
         if cell <= self.size || cell + self.size >= self.grid.len() - 1 {
             return None;
@@ -225,31 +272,32 @@ impl SpatialStructure {
         }
     }
 
+    #[cfg(feature = "no_id_check")]
+    pub fn get(&self, cell: usize) -> Option<[&[Vec2]; 9]> {
+        if cell <= self.size || cell + self.size >= self.grid.len() - 1 {
+            return None;
+        }
+        let up_pos = cell - self.size;
+        let down_pos = cell + self.size;
+        unsafe {
+            Some([
+                self.grid.get_unchecked(up_pos - 1).1.as_slice(),
+                self.grid.get_unchecked(up_pos).1.as_slice(),
+                self.grid.get_unchecked(up_pos + 1).1.as_slice(),
+                self.grid.get_unchecked(cell - 1).1.as_slice(),
+                self.grid.get_unchecked(cell).1.as_slice(),
+                self.grid.get_unchecked(cell + 1).1.as_slice(),
+                self.grid.get_unchecked(down_pos - 1).1.as_slice(),
+                self.grid.get_unchecked(down_pos).1.as_slice(),
+                self.grid.get_unchecked(down_pos + 1).1.as_slice(),
+            ])
+        }
+    }
+
     fn pos_to_cell(&self, pos: Vec2) -> usize {
         let pos = pos.clamp(Vec2::ZERO, Vec2::splat(self.level_size));
         (pos.x * SPATIAL_CELL_SIZE_INV) as usize
             + 1
             + ((pos.y * SPATIAL_CELL_SIZE_INV) as usize + 1) * self.size
-    }
-
-    #[allow(dead_code)]
-    fn print_stats(&self) {
-        let mut total = 0;
-        let mut avg_len = 0.0;
-        let mut longest: usize = 0;
-        let mut non_empties = 0;
-        for v in self.grid.iter() {
-            avg_len += v.len() as f32;
-            if v.len() > longest {
-                longest = v.len();
-            }
-            total += v.len();
-            non_empties += i32::from(!v.is_empty());
-        }
-        avg_len /= non_empties as f32;
-        info!(
-            "spatial grid vec non empty cells: {}, avg len: {}, longest: {}, total: {}",
-            non_empties, avg_len, longest, total
-        );
     }
 }

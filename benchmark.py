@@ -1,9 +1,15 @@
 import subprocess
+import numpy as np
 from pathlib import Path
 import json
 import sys
 
-LEVELS = ["1-Empty", "2-Labyrinth", "3-Cathedral", "4-Centipedetown"]
+LEVELS = [
+    "1-Empty",
+    "2-Labyrinth",
+    "3-Cathedral",
+    "4-Centipedetown",
+]
 
 FEATURES = {
     "spatial": [
@@ -15,10 +21,10 @@ FEATURES = {
         "spatial_rstar",
     ],
     "optimize": [
-        # ["distance_func2"],
-        # ["distance_func2", "branchless"],
+        ["distance_func2"],
+        ["distance_func2", "branchless"],
         # ["distance_func2", "branchless", "floatneighbors"],
-        ["distance_func2", "branchless", "floatneighbors", "no_id_check"],
+        # ["distance_func2", "branchless", "floatneighbors", "no_id_check"],
     ],
     "test": [],
 }
@@ -35,12 +41,10 @@ FEATURES = {
 
 
 def main(feature_key="test"):
+    total_statistics = {}
     for feature in FEATURES[feature_key]:
-        statistics = {
-            "spatial_reset": [],
-            "spatial_insert": [],
-            "avoidance": [],
-        }
+
+        statistics = {"flocking": {}}
 
         for level in LEVELS:
             print(f"Running {level} with features {feature}")
@@ -66,16 +70,19 @@ def main(feature_key="test"):
             with stats_file.open() as f:
                 stats = json.load(f)
                 for key in statistics:
-                    statistics[key].extend(stats[key])
+                    statistics[key][level] = stats[key]
+                    data = np.array(stats[key])
+                    mean = np.mean(data)
+                    std = np.std(data)
 
-        means = {}
+                    # Pring mean and std
+                    print(f"{key} {level}: {mean} +- {std} ms")
 
-        for key in statistics:
-            means[key] = sum(statistics[key]) / len(statistics[key]) * 1000
+        total_statistics[feature] = statistics
 
-        print(f"Feature {feature}, means:")
-        for key in means:
-            print(f"{key}: {means[key]} ms")
+        # Write to file
+    with Path(f"statistics-{feature_key}.json").open("w") as f:
+        json.dump(total_statistics, f)
 
 
 if __name__ == "__main__":
