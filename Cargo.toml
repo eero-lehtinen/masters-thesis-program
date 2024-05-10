@@ -4,6 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
+default = [
+	"navigation1",
+	"spatial_array",
+	"parallel",
+	"distance_func2",
+	"branchless",
+	"floatneighbors",
+	"new_movement",
+]
 bench = []
 navigation1 = []
 navigation2 = []
@@ -18,6 +27,9 @@ distance_func2 = []
 branchless = []
 floatneighbors = []
 no_id_check = []
+flocking_alignment = []
+new_movement = []
+new_move_clamp = []
 
 [profile.dev]
 debug = 1

@@ -57,6 +57,7 @@ def main(feature_key="test"):
                     "cargo",
                     "run",
                     "--release",
+                    "--no-default-features",
                     "--features",
                     feature,
                     "--",

@@ -30,7 +30,7 @@ impl Plugin for FlockingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init).add_systems(
             PreUpdate,
-            keep_distance_to_others.in_set(SimulationSet::LocalAvoidance),
+            keep_distance_to_others.in_set(SimulationSet::Flocking),
         );
     }
 }

@@ -44,7 +44,7 @@ impl Plugin for SimulationPlugin {
                 SimulationSet::Flush,
                 SimulationSet::GenNavigation,
                 SimulationSet::Move,
-                SimulationSet::LocalAvoidance,
+                SimulationSet::Flocking,
                 SimulationSet::ApplyColliders,
             )
                 .chain(),
@@ -60,6 +60,6 @@ pub enum SimulationSet {
     Flush,
     GenNavigation,
     Move,
-    LocalAvoidance,
+    Flocking,
     ApplyColliders,
 }

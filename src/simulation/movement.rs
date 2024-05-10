@@ -33,7 +33,11 @@ pub fn move_with_flow_field(world: &mut World) {
     enemy_q
         .iter_mut()
         .for_each(|(mut transform, mut velocity)| {
-            let max_speed_change = ENEMY_SPEED * 0.4; // Takes 5 ticks to completely change direction
+            #[cfg(not(feature = "new_movement"))]
+            let max_speed_change = ENEMY_SPEED * 0.4;
+            #[cfg(feature = "new_movement")]
+            let max_speed_change = ENEMY_SPEED * 0.05;
+
             let pos = transform.translation.truncate();
             let idx = nav_grid.pos_to_index(pos);
             // #[cfg(navigation1)]
@@ -51,17 +55,30 @@ pub fn move_with_flow_field(world: &mut World) {
                 },
             );
 
-            // #[cfg(navigation2)]
-            // let add_vel = Vec2::ONE * 0.1;
+            let mut new_vel = velocity.0 + add_vel;
 
-            let new_vel = velocity.0 + add_vel;
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "new_movement")] {
+                    let length = new_vel.length();
+                    let speeding = length - ENEMY_SPEED;
+                    if speeding > 0. {
+                        new_vel = new_vel / length * (length - speeding * 0.5)
+                    }
+                } else if #[cfg(feature = "new_move_clamp")] {
+                    let length = new_vel.length();
+                    let speeding = length - ENEMY_SPEED;
+                    if speeding > 0. {
+                        new_vel = new_vel / length * (length - speeding * 0.5)
+                    }
+                } else {
+                    let length = new_vel.length();
+                    // If over maximum, scale it down slowly
+                    let max = (length - ENEMY_SPEED * 0.5).clamp(ENEMY_SPEED, ENEMY_SPEED * 5.0);
+                    let new_vel = new_vel / length * max;
+                }
+            }
 
-            let length = new_vel.length();
-            // If over maximum, scale it down slowly
-            let max = (length - ENEMY_SPEED * 0.5).clamp(ENEMY_SPEED, ENEMY_SPEED * 5.0);
-            let vel = max * (new_vel / length);
-
-            let pos = pos + vel * DELTA_TIME;
+            let pos = pos + new_vel * DELTA_TIME;
             let valid = flow_field
                 .get(nav_grid.pos_to_index(pos))
                 .is_some_and(|flow| *flow != Flow::None);
@@ -69,7 +86,7 @@ pub fn move_with_flow_field(world: &mut World) {
             if valid {
                 transform.translation.x = pos.x;
                 transform.translation.y = pos.y;
-                velocity.0 = vel;
+                velocity.0 = new_vel;
             } else {
                 velocity.0 = Vec2::ZERO;
             }
