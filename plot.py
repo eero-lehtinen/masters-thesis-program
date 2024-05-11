@@ -1,11 +1,11 @@
 import json
-import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 
+# name = "distance_func"
+name = "move_forces"
 
-with open("statistics-optimize.json") as f:
+with open(f"statistics-{name}.json") as f:
     stats = json.load(f)
 
 data = {}
@@ -33,7 +33,22 @@ plt.margins(x=0.1, y=0.1)
 plt.xticks(x, levels)
 plt.xlabel("Level")
 plt.ylabel("Mean time (ms)")
-plt.legend(features)
+
+legend_names = {
+    "distance_func": {
+        "spatial_array": "Linear distance",
+        "spatial_array,distance_func2": "Quadratic distance",
+    },
+    "move_forces": {
+        "spatial_array,distance_func2": "Baseline",
+        "spatial_array,distance_func2,new_movement": "Low naviagation force",
+        "spatial_array,distance_func2,new_movement,new_move_clamp": "Lowe naviagation force & fixed clamping",
+    },
+}
+
+legend = [legend_names[name][f] for f in features]
+
+plt.legend(legend)
 
 plt.tight_layout()
 plt.show()

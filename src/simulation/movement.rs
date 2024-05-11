@@ -58,13 +58,7 @@ pub fn move_with_flow_field(world: &mut World) {
             let mut new_vel = velocity.0 + add_vel;
 
             cfg_if::cfg_if! {
-                if #[cfg(feature = "new_movement")] {
-                    let length = new_vel.length();
-                    let speeding = length - ENEMY_SPEED;
-                    if speeding > 0. {
-                        new_vel = new_vel / length * (length - speeding * 0.5)
-                    }
-                } else if #[cfg(feature = "new_move_clamp")] {
+                if #[cfg(feature = "new_move_clamp")] {
                     let length = new_vel.length();
                     let speeding = length - ENEMY_SPEED;
                     if speeding > 0. {
@@ -74,7 +68,7 @@ pub fn move_with_flow_field(world: &mut World) {
                     let length = new_vel.length();
                     // If over maximum, scale it down slowly
                     let max = (length - ENEMY_SPEED * 0.5).clamp(ENEMY_SPEED, ENEMY_SPEED * 5.0);
-                    let new_vel = new_vel / length * max;
+                    new_vel = new_vel / length * max;
                 }
             }
 

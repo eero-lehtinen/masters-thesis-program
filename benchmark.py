@@ -12,19 +12,25 @@ LEVELS = [
 ]
 
 FEATURES = {
-    "spatial": [
-        ["spatial_array", "branchless", "floatneighbors", "no_id_check"],
-        "spatial_hash",
-        "spatial_kdtree",
-        # "spatial_kdtree_kiddo",
-        "spatial_kdbush",
-        "spatial_rstar",
+    "distance_func": ["spatial_array", ["spatial_array", "distance_func2"]],
+    "move_forces": [
+        ["spatial_array", "distance_func2"],
+        ["spatial_array", "distance_func2", "new_movement"],
+        ["spatial_array", "distance_func2", "new_movement", "new_move_clamp"],
     ],
     "optimize": [
         ["distance_func2"],
         ["distance_func2", "branchless"],
         # ["distance_func2", "branchless", "floatneighbors"],
         # ["distance_func2", "branchless", "floatneighbors", "no_id_check"],
+    ],
+    "spatial": [
+        ["spatial_array", "branchless", "floatneighbors"],
+        "spatial_hash",
+        "spatial_kdtree",
+        # "spatial_kdtree_kiddo",
+        "spatial_kdbush",
+        "spatial_rstar",
     ],
     "test": [],
 }
