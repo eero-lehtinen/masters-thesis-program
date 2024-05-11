@@ -25,14 +25,12 @@ pub fn keep_distance_to_others(world: &mut World) {
     let (mut enemy_q, nav_grid, flow_field, mut spatial, mut stats) = system_state.get_mut(world);
 
     let start = Instant::now();
-    let reset_elapsed = start.elapsed();
 
     let positions = enemy_q
         .iter()
         .map(|(_, tr, _)| tr.translation.truncate().to_array())
         .collect::<Vec<_>>();
     spatial.tree = KdTree::build_by_ordered_float(positions);
-    let insert_elapsed = start.elapsed();
 
     let pref_dist = PREFERRED_DISTANCE;
 
@@ -44,20 +42,18 @@ pub fn keep_distance_to_others(world: &mut World) {
             .within_radius(&pos.to_array(), pref_dist)
             .into_iter()
             .map(|other_pos| {
-                let other_pos = Vec2::from(*other_pos);
-                let pos_delta = pos - other_pos;
+                let pos_delta = pos - Vec2::from(*other_pos);
                 let distance = pos_delta.length();
-                let distance_recip = (distance + SAFETY_MARGIN).recip();
-                let valid = i32::from(distance != 0.);
-                (
-                    valid,
-                    valid as f32 * pos_delta * (distance_recip * (pref_dist - distance)),
-                )
+                let magnitude = (pref_dist - distance).powi(2);
+                let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                let force = magnitude * direction;
+                let valid = f32::from(distance != 0.);
+                (valid, valid * force)
             })
-            .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+            .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
 
-        let jitter_remove_add = 3;
-        total_delta /= (valid_neighbors + jitter_remove_add) as f32 * 0.5;
+        total_delta /= valid_neighbors;
+        total_delta *= 2.;
 
         if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
             if *flow != Flow::None {
@@ -68,9 +64,7 @@ pub fn keep_distance_to_others(world: &mut World) {
         }
     }
 
-    stats.add("spatial_reset", reset_elapsed);
-    stats.add("spatial_insert", insert_elapsed - reset_elapsed);
-    stats.add("avoidance", start.elapsed() - insert_elapsed);
+    stats.add("flocking", start.elapsed());
 }
 
 use kd_tree::KdTree;

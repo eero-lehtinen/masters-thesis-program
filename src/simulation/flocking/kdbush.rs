@@ -26,7 +26,6 @@ pub fn keep_distance_to_others(world: &mut World) {
     let (mut enemy_q, nav_grid, flow_field, mut spatial, mut stats) = system_state.get_mut(world);
 
     let start = Instant::now();
-    let reset_elapsed = start.elapsed();
 
     spatial.tree = KDBush::new(MAX_ENEMIES as usize, 32);
     let positions = enemy_q
@@ -40,14 +39,12 @@ pub fn keep_distance_to_others(world: &mut World) {
         .collect::<Vec<_>>();
     spatial.tree.build_index();
 
-    let insert_elapsed = start.elapsed();
-
     let pref_dist = PREFERRED_DISTANCE;
 
     for (mut translation, mut velocity) in enemy_q.iter_mut() {
         let pos = translation.translation.truncate();
 
-        let mut valid_neighbors = 0;
+        let mut valid_neighbors = 0.;
         let mut total_delta = Vec2::ZERO;
         spatial
             .tree
@@ -55,14 +52,15 @@ pub fn keep_distance_to_others(world: &mut World) {
                 let other_pos = positions[id];
                 let pos_delta = pos - other_pos;
                 let distance = pos_delta.length();
-                let distance_recip = (distance + SAFETY_MARGIN).recip();
-                let valid = i32::from(pos_delta != Vec2::ZERO);
+                let magnitude = (pref_dist - distance).powi(2);
+                let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                let force = magnitude * direction;
+                let valid = f32::from(distance != 0.);
                 valid_neighbors += valid;
-                total_delta += valid as f32 * pos_delta * (distance_recip * (pref_dist - distance));
+                total_delta += valid * force;
             });
-
-        let jitter_remove_add = 3;
-        total_delta /= (valid_neighbors + jitter_remove_add) as f32 * 0.5;
+        total_delta /= valid_neighbors;
+        total_delta *= 2.;
 
         if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
             if *flow != Flow::None {
@@ -73,9 +71,7 @@ pub fn keep_distance_to_others(world: &mut World) {
         }
     }
 
-    stats.add("spatial_reset", reset_elapsed);
-    stats.add("spatial_insert", insert_elapsed - reset_elapsed);
-    stats.add("avoidance", start.elapsed() - insert_elapsed);
+    stats.add("flocking", start.elapsed());
 }
 
 use kdbush::KDBush;

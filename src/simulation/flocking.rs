@@ -1,26 +1,26 @@
 use bevy::prelude::*;
 
-// cfg_if::cfg_if! {
-// if #[cfg(feature = "spatial_hash")] {
-//     mod hash;
-//     use hash::{init, keep_distance_to_others};
-// } else if #[cfg(feature = "spatial_kdtree")] {
-//     mod kdtree;
-//     use kdtree::{init, keep_distance_to_others};
-// } else if #[cfg(feature = "spatial_kdtree_kiddo")] {
-//     mod kdtree_kiddo;
-//     use kdtree_kiddo::{init, keep_distance_to_others};
-// } else if #[cfg(feature = "spatial_kdbush")] {
-//     mod kdbush;
-//     use kdbush::{init, keep_distance_to_others};
-// } else if #[cfg(feature = "spatial_rstar")] {
-//     mod rstar;
-//     use rstar::{init, keep_distance_to_others};
-// } else {
-mod array;
-use array::{init, keep_distance_to_others};
-// }
-// }
+cfg_if::cfg_if! {
+    if #[cfg(any(feature = "spatial_hash", feature = "spatial_hash_std"))] {
+        mod hash;
+        use hash::{init, keep_distance_to_others};
+    } else if #[cfg(feature = "spatial_kdtree")] {
+        mod kdtree;
+        use kdtree::{init, keep_distance_to_others};
+    } else if #[cfg(feature = "spatial_kdtree_kiddo")] {
+        mod kdtree_kiddo;
+        use kdtree_kiddo::{init, keep_distance_to_others};
+    } else if #[cfg(feature = "spatial_kdbush")] {
+        mod kdbush;
+        use kdbush::{init, keep_distance_to_others};
+    } else if #[cfg(feature = "spatial_rstar")] {
+        mod rstar;
+        use rstar::{init, keep_distance_to_others};
+    } else {
+        mod array;
+        use array::{init, keep_distance_to_others};
+    }
+}
 
 use super::{spawning::ENEMY_RADIUS, SimulationSet};
 

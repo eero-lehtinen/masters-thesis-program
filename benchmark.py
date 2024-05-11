@@ -11,6 +11,15 @@ LEVELS = [
     "4-Centipedetown",
 ]
 
+move_baseline = ["spatial_array", "distance_func2", "new_movement", "new_move_clamp"]
+spatial_baseline = [
+    "distance_func2",
+    "branchless",
+    "floatneighbors",
+    "new_movement",
+    "new_move_clamp",
+]
+
 FEATURES = {
     "distance_func": ["spatial_array", ["spatial_array", "distance_func2"]],
     "move_forces": [
@@ -18,19 +27,19 @@ FEATURES = {
         ["spatial_array", "distance_func2", "new_movement"],
         ["spatial_array", "distance_func2", "new_movement", "new_move_clamp"],
     ],
-    "optimize": [
-        ["distance_func2"],
-        ["distance_func2", "branchless"],
-        # ["distance_func2", "branchless", "floatneighbors"],
-        # ["distance_func2", "branchless", "floatneighbors", "no_id_check"],
+    "micro_optimizations": [
+        move_baseline,
+        move_baseline + ["branchless"],
+        move_baseline + ["branchless", "floatneighbors"],
     ],
     "spatial": [
-        ["spatial_array", "branchless", "floatneighbors"],
-        "spatial_hash",
-        "spatial_kdtree",
-        # "spatial_kdtree_kiddo",
-        "spatial_kdbush",
-        "spatial_rstar",
+        spatial_baseline,
+        spatial_baseline + ["spatial_hash"],
+        spatial_baseline + ["spatial_hash_std"],
+        spatial_baseline + ["spatial_kdbush"],
+        spatial_baseline + ["spatial_kdtree"],
+        # spatial_baseline + ["spatial_kdtree_kiddo"],
+        spatial_baseline + ["spatial_rstar"],
     ],
     "test": [],
 }

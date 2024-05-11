@@ -1,7 +1,9 @@
 use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 
+#[cfg(not(feature = "spatial_hash_std"))]
 use bevy::utils::HashMap;
-// use std::collections::HashMap;
+#[cfg(feature = "spatial_hash_std")]
+use std::collections::HashMap;
 
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
@@ -31,12 +33,10 @@ pub fn keep_distance_to_others(world: &mut World) {
 
     let start = Instant::now();
     spatial.reset();
-    let reset_elapsed = start.elapsed();
 
     enemy_q
         .iter()
         .for_each(|(entity, tr, _)| spatial.insert((entity, tr.translation.truncate())));
-    let insert_elapsed = start.elapsed();
 
     let pref_dist = PREFERRED_DISTANCE;
 
@@ -48,26 +48,22 @@ pub fn keep_distance_to_others(world: &mut World) {
                 continue;
             };
 
-            let neighbors = neighbors.iter().flatten().flat_map(|v| v.iter());
-
-            let (valid_neighbors, mut total_delta) = items
+            let (valid_neighbors, mut total_delta) = neighbors
                 .iter()
-                .chain(neighbors)
+                .flatten()
+                .flat_map(|v| v.iter())
                 .map(|&(other_entity, other_pos)| {
                     let pos_delta = pos - other_pos;
                     let distance = pos_delta.length();
-                    // Make sure that recip doesn't return infinity or very large values by adding a number.
-                    let distance_recip = (distance + SAFETY_MARGIN).recip();
-                    let valid = i32::from(other_entity != entity && distance < pref_dist);
-                    (
-                        valid,
-                        valid as f32 * pos_delta * (distance_recip * (pref_dist - distance)),
-                    )
+                    let magnitude = (pref_dist - distance).powi(2);
+                    let direction = 1. / (distance + SAFETY_MARGIN) * pos_delta;
+                    let force = magnitude * direction;
+                    let valid = f32::from(other_entity != entity && distance < pref_dist);
+                    (valid, valid * force)
                 })
-                .fold((0, Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
-
-            let jitter_remove_add = 3;
-            total_delta /= (valid_neighbors + jitter_remove_add) as f32 * 0.5;
+                .fold((0., Vec2::ZERO), |acc, x| (acc.0 + x.0, acc.1 + x.1));
+            total_delta /= valid_neighbors;
+            total_delta *= 2.;
 
             if let Some(flow) = flow_field.get(nav_grid.pos_to_index(pos + total_delta)) {
                 if *flow != Flow::None {
@@ -78,9 +74,7 @@ pub fn keep_distance_to_others(world: &mut World) {
             }
         }
     });
-    stats.add("spatial_reset", reset_elapsed);
-    stats.add("spatial_insert", insert_elapsed - reset_elapsed);
-    stats.add("avoidance", start.elapsed() - insert_elapsed);
+    stats.add("flocking", start.elapsed());
 }
 
 const SPATIAL_CELL_SIZE: f32 = PREFERRED_DISTANCE;
