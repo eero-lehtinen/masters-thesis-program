@@ -12,13 +12,16 @@ Install Rust (preferably using [rustup](https://rustup.rs/)).
 ## Usage
 
 ```sh
-# Run the simulator on level "a" with a visualizer
-cargo run -r -- --level a viewer
+# Run the simulator on level "3-Cathedral" with a visualizer
+cargo run -r -- --update-nav --level 3-Cathedral viewer
 
-# Run the simulator headlessly as a benchmark for 1000 ticks
-cargo run -r -- --level a bench --ticks 1000
+# Run the simulator headlessly as a benchmark
+cargo run -r -- --level 3-Cathedral benchmark
 
 # Run the level editor
 cargo run -r -- editor
 ```
 
+In the viewer, move around by dragging the mouse and zoom in/out with the scroll wheel.
+Left click to make agents follow the cursor.
+Press `F` to toggle flow field arrows.

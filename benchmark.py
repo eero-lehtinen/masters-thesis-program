@@ -48,16 +48,6 @@ FEATURES = {
     "test": [],
 }
 
-# FEATURES = [
-#     "distance_func2",
-#     ["distance_func2", "branchless"],
-# ]
-#
-# FEATURES = [
-#     ["distance_func2", "branchless"],
-#     ["distance_func2", "branchless", "floatneighbors"],
-# ]
-
 
 def main(feature_key="test"):
     total_statistics = {}
