@@ -3,22 +3,22 @@ use bevy::prelude::*;
 cfg_if::cfg_if! {
     if #[cfg(any(feature = "spatial_hash", feature = "spatial_hash_std"))] {
         mod hash;
-        use hash::{init, keep_distance_to_others};
+        use hash::{init, movement};
     } else if #[cfg(feature = "spatial_kdtree")] {
         mod kdtree;
-        use kdtree::{init, keep_distance_to_others};
+        use kdtree::{init, movement};
     } else if #[cfg(feature = "spatial_kdtree_kiddo")] {
         mod kdtree_kiddo;
-        use kdtree_kiddo::{init, keep_distance_to_others};
+        use kdtree_kiddo::{init, movement};
     } else if #[cfg(feature = "spatial_kdbush")] {
         mod kdbush;
-        use kdbush::{init, keep_distance_to_others};
+        use kdbush::{init, movement};
     } else if #[cfg(feature = "spatial_rstar")] {
         mod rstar;
-        use rstar::{init, keep_distance_to_others};
+        use rstar::{init, movement};
     } else {
         mod array;
-        use array::{init, keep_distance_to_others};
+        use array::{init, movement};
     }
 }
 
@@ -28,10 +28,8 @@ pub struct FlockingPlugin;
 
 impl Plugin for FlockingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, init).add_systems(
-            PreUpdate,
-            keep_distance_to_others.in_set(SimulationSet::Flocking),
-        );
+        app.add_systems(Startup, init)
+            .add_systems(PreUpdate, movement.in_set(SimulationSet::Movement));
     }
 }
 

@@ -41,6 +41,10 @@ FEATURES = {
         # spatial_baseline + ["spatial_kdtree_kiddo"],
         spatial_baseline + ["spatial_rstar"],
     ],
+    "parallel": [
+        spatial_baseline,
+        spatial_baseline + ["parallel"],
+    ],
     "test": [],
 }
 
@@ -59,7 +63,7 @@ def main(feature_key="test"):
     total_statistics = {}
     for feature in FEATURES[feature_key]:
 
-        statistics = {"flocking": {}}
+        statistics = {"movement": {}}
 
         for level in LEVELS:
             print(f"Running {level} with features {feature}")

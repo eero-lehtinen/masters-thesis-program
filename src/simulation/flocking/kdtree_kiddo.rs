@@ -2,7 +2,7 @@ use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 use itertools::Itertools;
 use kiddo::float::{distance::SquaredEuclidean, kdtree::KdTree};
 
-use crate::simulation::spawning::MAX_ENEMIES;
+use crate::simulation::movement;
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use crate::simulation::{
@@ -17,7 +17,11 @@ pub fn init(mut commands: Commands) {
     commands.insert_resource(SpatialStructure::new());
 }
 
-pub fn keep_distance_to_others(world: &mut World) {
+pub fn movement(world: &mut World) {
+    let start = Instant::now();
+
+    movement::move_with_flow_field(world);
+
     let mut system_state: SystemState<(
         Query<(&mut Transform, &mut Velocity), With<Enemy>>,
         Res<NavGrid>,
@@ -26,9 +30,6 @@ pub fn keep_distance_to_others(world: &mut World) {
         ResMut<Statistics>,
     )> = SystemState::new(world);
     let (mut enemy_q, nav_grid, flow_field, mut spatial, mut stats) = system_state.get_mut(world);
-
-    let start = Instant::now();
-    let reset_elapsed = start.elapsed();
 
     spatial.tree = KdTree::with_capacity(enemy_q.iter().len());
     let positions = enemy_q
@@ -76,9 +77,7 @@ pub fn keep_distance_to_others(world: &mut World) {
         }
     }
 
-    stats.add("spatial_reset", reset_elapsed);
-    stats.add("spatial_insert", insert_elapsed - reset_elapsed);
-    stats.add("avoidance", start.elapsed() - insert_elapsed);
+    stats.add("movement", start.elapsed() - insert_elapsed);
 }
 
 #[derive(Resource)]

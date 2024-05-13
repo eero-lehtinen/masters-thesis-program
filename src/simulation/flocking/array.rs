@@ -3,6 +3,7 @@ use bevy::{ecs::system::SystemState, prelude::*, utils::Instant};
 #[cfg(feature = "parallel")]
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
+use crate::simulation::movement;
 use crate::{statistics::Statistics, utils::Velocity, DELTA_TIME};
 
 use crate::simulation::{
@@ -19,7 +20,11 @@ pub fn init(level: Res<Level>, mut commands: Commands) {
     commands.insert_resource(SpatialStructure::new(level.size));
 }
 
-pub fn keep_distance_to_others(world: &mut World) {
+pub fn movement(world: &mut World) {
+    let start = Instant::now();
+
+    movement::move_with_flow_field(world);
+
     let mut system_state: SystemState<(
         Query<(Entity, &mut Transform, &mut Velocity), With<Enemy>>,
         Res<NavGrid>,
@@ -29,7 +34,6 @@ pub fn keep_distance_to_others(world: &mut World) {
     )> = SystemState::new(world);
     let (enemy_q, nav_grid, flow_field, mut spatial, mut stats) = system_state.get_mut(world);
 
-    let start = Instant::now();
     spatial.reset();
 
     cfg_if::cfg_if! {
@@ -174,7 +178,7 @@ pub fn keep_distance_to_others(world: &mut World) {
             }
         });
 
-    stats.add("flocking", start.elapsed());
+    stats.add("movement", start.elapsed());
 }
 
 const SPATIAL_CELL_SIZE: f32 = PREFERRED_DISTANCE;

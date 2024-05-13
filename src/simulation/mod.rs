@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 
-use self::{
-    flocking::FlockingPlugin, movement::MovementPlugin, navigation::NavigationPlugin,
-    spawning::SpawningPlugin,
-};
+use self::{flocking::FlockingPlugin, navigation::NavigationPlugin, spawning::SpawningPlugin};
 
 mod collision;
 mod flocking;
@@ -28,7 +25,6 @@ pub struct SimulationPlugin {
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            MovementPlugin,
             FlockingPlugin,
             NavigationPlugin {
                 update: self.update_nav,
@@ -43,8 +39,7 @@ impl Plugin for SimulationPlugin {
                 SimulationSet::Spawn,
                 SimulationSet::Flush,
                 SimulationSet::GenNavigation,
-                SimulationSet::Move,
-                SimulationSet::Flocking,
+                SimulationSet::Movement,
                 SimulationSet::ApplyColliders,
             )
                 .chain(),
@@ -59,7 +54,6 @@ pub enum SimulationSet {
     Spawn,
     Flush,
     GenNavigation,
-    Move,
-    Flocking,
+    Movement,
     ApplyColliders,
 }
