@@ -48,6 +48,8 @@ pub fn movement(world: &mut World) {
         }
     }
 
+    stats.add("insert", start.elapsed());
+
     let pref_dist = PREFERRED_DISTANCE;
 
     #[cfg(not(feature = "parallel"))]
