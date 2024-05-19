@@ -39,9 +39,9 @@ def combined():
         + ",branchless,floatneighbors": "Branchless & float neighbors / Spatial array",
         spatial_baseline + ",spatial_hash": "Spatial hash (ahash)",
         spatial_baseline + ",spatial_hash_std": "Spatial hash (std hash)",
-        spatial_baseline + ",spatial_kdtree": "KD-Tree",
-        spatial_baseline + ",spatial_kdbush": "KD-Bush",
-        spatial_baseline + ",spatial_rstar": "R-Star",
+        spatial_baseline + ",spatial_kdtree": "K-d tree",
+        spatial_baseline + ",spatial_kdbush": "K-d bush",
+        spatial_baseline + ",spatial_rstar": "R*-tree",
         spatial_baseline + ",parallel": "Parallel 8 cores, 16 threads",
     }
 
@@ -101,9 +101,9 @@ def plot(name):
             spatial_baseline: "Spatial array",
             spatial_baseline + ",spatial_hash": "Spatial hash (ahash)",
             spatial_baseline + ",spatial_hash_std": "Spatial hash (std hash)",
-            spatial_baseline + ",spatial_kdtree": "KD-Tree",
-            spatial_baseline + ",spatial_kdbush": "KD-Bush",
-            spatial_baseline + ",spatial_rstar": "R-Star",
+            spatial_baseline + ",spatial_kdtree": "K-d tree",
+            spatial_baseline + ",spatial_kdbush": "K-d bush",
+            spatial_baseline + ",spatial_rstar": "R*-tree",
         },
         "parallel": {
             spatial_baseline: "Serial",
